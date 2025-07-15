@@ -1,4 +1,5 @@
 import './App.css'
+import { LoginForm } from './AuthPage/login-form';
 import {Button} from "./components/ui/button"
 
 
@@ -6,8 +7,9 @@ function App() {
 
   return (
     <>
-      <h1>Project Started</h1>
-      <Button variant="destructive">Click me</Button>
+      <div className="flex items-center justify-center min-h-screen">
+        <LoginForm />
+      </div>
     </>
   );
 }
