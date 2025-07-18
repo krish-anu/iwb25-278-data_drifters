@@ -1,14 +1,15 @@
 import './App.css'
-import { LoginForm } from './AuthPage/login-form';
-import {Button} from "./components/ui/button"
+import { Dashboard } from './AuthPage/dashboard';
+// import { LoginForm } from './AuthPage/login-form';
+// import {Button} from "./components/ui/button"
 
 
 function App() {
 
   return (
     <>
-      <div className="flex items-center justify-center min-h-screen">
-        <LoginForm />
+      <div>
+        <Dashboard />
       </div>
     </>
   );
