@@ -1,19 +1,19 @@
-import ballerina/http;
 import ballerina/crypto;
-import ballerina/time;
+import ballerina/http;
 import ballerina/log;
+import ballerina/time;
 import ballerina/uuid;
 import ballerinax/mongodb;
 
 // Configuration
-configurable string mongodbConnectionString = "mongodb+srv://krishnaanu200302:Jj2jWnJAsZ8rvELI@cluster0.k0xuohg.mongodb.net/golang_db?retryWrites=true&w=majority&appName=Cluster0";
-configurable string databaseName = "userdb";
-configurable string collectionName = "users";
-configurable string jwtSecret = "your-secret-key-here";
+configurable string mongodbConnectionString = ?;
+configurable string databaseName = ?;
+configurable string collectionName = ?;
+configurable string jwtSecret = ?;
 
 // MongoDB client configuration
 mongodb:ConnectionConfig mongoConfig = {
-    connection:mongodbConnectionString+databaseName
+    connection: mongodbConnectionString + databaseName
 };
 
 mongodb:Client mongoClient = check new (mongoConfig);
@@ -58,11 +58,11 @@ map<UserInfo> activeSessions = {};
         allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
     }
 }
-service /auth on new http:Listener(8080) {
+service /auth on new http:Listener(9090) {
 
     // Login endpoint
     resource function post login(LoginRequest loginReq) returns LoginResponse|http:InternalServerError|http:BadRequest|http:Unauthorized {
-        
+
         // Validate input
         if loginReq.email.trim() == "" || loginReq.password.trim() == "" {
             return <http:BadRequest>{
@@ -75,7 +75,7 @@ service /auth on new http:Listener(8080) {
 
         // Find user in database
         User|error userResult = findUserByEmail(loginReq.email);
-        
+
         if userResult is error {
             log:printError("Database error: " + userResult.message());
             return <http:Unauthorized>{
@@ -88,7 +88,7 @@ service /auth on new http:Listener(8080) {
 
         // Verify password
         boolean isValidPassword = verifyPassword(loginReq.password, userResult.password);
-        
+
         if !isValidPassword {
             return <http:Unauthorized>{
                 body: {
@@ -100,7 +100,7 @@ service /auth on new http:Listener(8080) {
 
         // Generate simple token
         string token = generateToken(userResult);
-        
+
         // Store session
         UserInfo userInfo = {
             _id: userResult._id ?: "",
@@ -120,7 +120,7 @@ service /auth on new http:Listener(8080) {
 
     // Register endpoint
     resource function post register(User newUser) returns LoginResponse|http:InternalServerError|http:BadRequest|http:Conflict {
-        
+
         // Validate input
         if newUser.email.trim() == "" || newUser.password.trim() == "" || newUser.name.trim() == "" {
             return <http:BadRequest>{
@@ -133,7 +133,7 @@ service /auth on new http:Listener(8080) {
 
         // Check if user already exists
         User|error existingUser = findUserByEmail(newUser.email);
-        
+
         if existingUser is User {
             return <http:Conflict>{
                 body: {
@@ -145,23 +145,23 @@ service /auth on new http:Listener(8080) {
 
         // Hash password
         string hashedPassword = hashPassword(newUser.password);
-        
+
         // Create user object
         // ISO 8601 string format
-string now = time:utcNow().toString();
+        string now = time:utcNow().toString();
 
-User userToCreate = {
-    _id: uuid:createType4AsString(),
-    name: newUser.name,
-    email: newUser.email,
-    password: hashedPassword,
-    createdAt: now,
-    updatedAt: now
-};
+        User userToCreate = {
+            _id: uuid:createType4AsString(),
+            name: newUser.name,
+            email: newUser.email,
+            password: hashedPassword,
+            createdAt: now,
+            updatedAt: now
+        };
 
         // Insert user into database
         error? insertResult = insertUser(userToCreate);
-        
+
         if insertResult is error {
             log:printError("Database insertion error: " + insertResult.message());
             return <http:InternalServerError>{
@@ -174,7 +174,7 @@ User userToCreate = {
 
         // Generate token
         string token = generateToken(userToCreate);
-        
+
         // Store session
         UserInfo userInfo = {
             _id: userToCreate._id ?: "",
@@ -216,7 +216,7 @@ User userToCreate = {
 
         string token = authorization.substring(7); // Remove "Bearer " prefix
         UserInfo? userInfo = activeSessions[token];
-        
+
         if userInfo is () {
             return <http:Unauthorized>{
                 body: {
@@ -234,23 +234,23 @@ User userToCreate = {
 function findUserByEmail(string email) returns User|error {
     mongodb:Database database = check mongoClient->getDatabase(databaseName);
     mongodb:Collection collection = check database->getCollection(collectionName);
-    
+
     map<json> filter = {"email": email};
     stream<User, error?> userStream = check collection->find(filter, {}, (), User);
     User[] users = check from User user in userStream
-                         select user;
+        select user;
 
     if users.length() > 0 {
         return users[0];
     }
-    
+
     return error("User not found");
 }
 
 function insertUser(User user) returns error? {
     mongodb:Database database = check mongoClient->getDatabase(databaseName);
     mongodb:Collection collection = check database->getCollection(collectionName);
-    
+
     check collection->insertOne(user);
 }
 
