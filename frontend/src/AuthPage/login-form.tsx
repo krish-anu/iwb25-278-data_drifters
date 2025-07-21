@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useState } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
 export function LoginForm({
   className,
@@ -16,6 +17,7 @@ export function LoginForm({
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showSignup, setShowSignup] = useState(false);
+  const navigate = useNavigate();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,14 +26,15 @@ export function LoginForm({
     setShowSignup(false);
 
     try {
-      const res = await axios.post("http://localhost:8080/auth/login", {
+      const res = await axios.post("http://localhost:9090/auth/login", {
         email,
         password,
       });
 
       if (res.data.status === "success") {
+        navigate("/dashboard");
         localStorage.setItem("token", res.data.token);
-        alert(`Welcome, ${res.data.user.name}`);
+        // alert(`Welcome, ${res.data.user.name}`);
         // window.location.href = "/dashboard";
       } else {
         setError(res.data.message || "Login failed");
@@ -54,7 +57,7 @@ export function LoginForm({
     setError("");
 
     try {
-      const res = await axios.post("http://localhost:8080/auth/register", {
+      const res = await axios.post("http://localhost:9090/auth/register", {
         name,
         email,
         password,
@@ -140,7 +143,11 @@ export function LoginForm({
                   <p className="text-red-600 text-sm font-medium">{error}</p>
                 )}
                 <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? "Processing..." : showSignup ? "Sign Up" : "Login"}
+                  {isLoading
+                    ? "Processing..."
+                    : showSignup
+                    ? "Sign Up"
+                    : "Login"}
                 </Button>
                 {!showSignup && (
                   <p className="text-sm text-center">
