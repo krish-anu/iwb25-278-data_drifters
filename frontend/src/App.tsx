@@ -2,7 +2,7 @@
 import "./App.css";
 import { ShopPage } from "./pages/User/shop-page";
 import { Dashboard } from "./pages/Admin/dashboard";
-import { LoginForm } from './AuthPage/login-form';
+import LoginForm from './AuthPage/login-form';
 import {Routes, Route} from 'react-router-dom';
 
 function App() {
