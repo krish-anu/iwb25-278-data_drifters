@@ -1,0 +1,20 @@
+[package]
+org = "ecommerce"
+name = "Backend"
+version = "0.1.0"
+distribution = "2201.12.7"
+
+[build-options]
+observabilityIncluded = true
+
+[dependencies]
+"ballerina/crypto" = "2.4.0"
+"ballerina/http" = "2.10.0"
+"ballerina/log" = "2.10.0"
+"ballerina/time" = "2.4.0"
+"ballerina/uuid" = "1.8.0"
+"ballerinax/mongodb" = "1.11.0"
+
+[[module]]
+name = "Backend.services"
+path = "modules/services"
