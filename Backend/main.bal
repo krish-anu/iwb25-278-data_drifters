@@ -1,16 +1,20 @@
-import ballerina/crypto;
 import ballerina/http;
 import ballerina/log;
 import ballerina/time;
 import ballerina/uuid;
 import ballerinax/mongodb;
 import Backend.models as models;
+import Backend.utils as Utils;
 
 // Configuration
 configurable string mongodbConnectionString = ?;
 configurable string databaseName = ?;
-configurable string collectionName = ?;
+configurable string collectionName_users = ?;
+configurable string collectionName_products = ?;
 configurable string jwtSecret = ?;
+
+
+
 
 // MongoDB client configuration
 mongodb:ConnectionConfig mongoConfig = {
@@ -63,7 +67,7 @@ service /auth on new http:Listener(9090) {
         }
 
         // Verify password
-        boolean isValidPassword = verifyPassword(loginReq.password, userResult.password);
+        boolean isValidPassword = Utils:verifyPassword(loginReq.password, userResult.password);
 
         if !isValidPassword {
             return <http:Unauthorized>{
@@ -75,7 +79,7 @@ service /auth on new http:Listener(9090) {
         }
 
         // Generate simple token
-        string token = generateToken(userResult);
+        string token = Utils:generateToken(userResult);
 
         // Store session
         models:UserInfo userInfo = {
@@ -120,7 +124,7 @@ service /auth on new http:Listener(9090) {
         }
 
         // Hash password
-        string hashedPassword = hashPassword(newUser.password);
+        string hashedPassword = Utils:hashPassword(newUser.password);
 
         // Create user object
         // ISO 8601 string format
@@ -136,7 +140,7 @@ service /auth on new http:Listener(9090) {
         };
 
         // Insert user into database
-        error? insertResult = insertUser(userToCreate);
+        error? insertResult = Utils:insertUser(userToCreate);
 
         if insertResult is error {
             log:printError("Database insertion error: " + insertResult.message());
@@ -149,7 +153,7 @@ service /auth on new http:Listener(9090) {
         }
 
         // Generate token
-        string token = generateToken(userToCreate);
+        string token = Utils:generateToken(userToCreate);
 
         // Store session
        models:UserInfo userInfo = {
@@ -209,7 +213,7 @@ service /auth on new http:Listener(9090) {
 // Database functions
 function findUserByEmail(string email) returns models:User|error {
     mongodb:Database database = check mongoClient->getDatabase(databaseName);
-    mongodb:Collection collection = check database->getCollection(collectionName);
+    mongodb:Collection collection = check database->getCollection(collectionName_users);
 
     map<json> filter = {"email": email};
     stream<models:User, error?> userStream = check collection->find(filter, {}, (), models:User);
@@ -223,36 +227,21 @@ function findUserByEmail(string email) returns models:User|error {
     return error("User not found");
 }
 
-function insertUser(models:User user) returns error? {
-    mongodb:Database database = check mongoClient->getDatabase(databaseName);
-    mongodb:Collection collection = check database->getCollection(collectionName);
+service  / on new http:Listener(9091) {
+    // This service can be used to manage products, similar to the auth service
+    // For simplicity, we are not implementing product management in this example   
+    // You can implement CRUD operations for products here
+    // Example: resource function post createProduct(models:Product product) returns models:ProductResponse
+    resource function get products() returns models:ProductResponse|error {
+        mongodb:Database database = check mongoClient->getDatabase(databaseName);
+        mongodb:Collection collection = check database->getCollection(collectionName_products);
 
-    check collection->insertOne(user);
-}
+        stream<models:Product, error?> productStream = check collection->find({}, {}, (), models:Product);
 
-// Password hashing functions
-function hashPassword(string password) returns string {
-    byte[] hashedBytes = crypto:hashSha256(password.toBytes());
-    return hashedBytes.toBase64();
-}
+        models:Product[] products = check from models:Product product in productStream
+            select product;
 
-function verifyPassword(string password, string hashedPassword) returns boolean {
-    string hashedInput = hashPassword(password);
-    return hashedInput == hashedPassword;
-}
-
-// Simple token generation
-function generateToken(models:User user) returns string {
-    string data = user.email + ":" + time:utcNow()[0].toString() + ":" + jwtSecret;
-    byte[] tokenBytes = crypto:hashSha256(data.toBytes());
-    return tokenBytes.toBase64();
-}
-
-// Token validation
-function validateToken(string token) returns models:UserInfo|error {
-    models:UserInfo? userInfo = activeSessions[token];
-    if userInfo is () {
-        return error("Invalid token");
+        return {products: products};
     }
-    return userInfo;
+    
 }
