@@ -1,7 +1,7 @@
 import Header from "@/components/header";
 import ProductGrid from "@/components/shop-grid";
 
-const Index = () => {
+const SuperAdmin = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -10,4 +10,4 @@ const Index = () => {
   );
 };
 
-export default Index;
+export default SuperAdmin;
