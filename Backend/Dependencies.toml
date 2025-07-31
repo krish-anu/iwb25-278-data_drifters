@@ -372,6 +372,7 @@ dependencies = [
 ]
 modules = [
 	{org = "ecommerce", packageName = "Backend", moduleName = "Backend"},
+	{org = "ecommerce", packageName = "Backend", moduleName = "Backend.db"},
 	{org = "ecommerce", packageName = "Backend", moduleName = "Backend.models"},
 	{org = "ecommerce", packageName = "Backend", moduleName = "Backend.utils"}
 ]

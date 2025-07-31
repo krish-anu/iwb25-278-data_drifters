@@ -5,13 +5,14 @@ import ballerina/uuid;
 import ballerinax/mongodb;
 import Backend.models as models;
 import Backend.utils as Utils;
+import Backend.db as db;
 
 // Configuration
 configurable string mongodbConnectionString = ?;
 configurable string databaseName = ?;
 configurable string collectionName_users = ?;
 configurable string collectionName_products = ?;
-configurable string jwtSecret = ?;
+// configurable string jwtSecret = ?;
 
 
 
@@ -140,7 +141,7 @@ service /auth on new http:Listener(9090) {
         };
 
         // Insert user into database
-        error? insertResult = Utils:insertUser(userToCreate);
+        error? insertResult = db:insertUser(userToCreate);
 
         if insertResult is error {
             log:printError("Database insertion error: " + insertResult.message());

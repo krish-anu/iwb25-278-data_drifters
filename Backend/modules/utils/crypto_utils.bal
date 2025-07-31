@@ -1,7 +1,7 @@
 import ballerina/crypto;
 import ballerina/time;
 // import ballerina/uuid;
-import ecommerce/Backend.models as models;
+import Backend.models as models;
 
 configurable string jwtSecret = ?;
 
