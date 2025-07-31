@@ -45,7 +45,7 @@ All colors MUST be HSL.
     --sale-foreground: 0 0% 100%;
 
     /* Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(14 100% 57%), hsl(24 100% 50%));
+    --gradient-primary: linear-gradient(135deg, hsl(222, 83%, 50%), hsl(24 100% 50%));
     --gradient-hero: linear-gradient(135deg, hsl(14 100% 57% / 0.1), hsl(24 100% 50% / 0.05));
     --gradient-card: linear-gradient(145deg, hsl(0 0% 100%), hsl(210 20% 98%));
 
