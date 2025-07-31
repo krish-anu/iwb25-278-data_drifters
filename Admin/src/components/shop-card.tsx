@@ -1,5 +1,5 @@
-import { Button } from "/Users/sriyathurshankovindarajah/Documents/Ballerina/Ballerina_Competition/user/src/components/ui/button";
-import { Badge } from "/Users/sriyathurshankovindarajah/Documents/Ballerina/Ballerina_Competition/user/src/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Heart, Eye, Star } from "lucide-react";
 

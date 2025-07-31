@@ -1,7 +1,7 @@
 import { Search, Map, User, Menu, Heart } from "lucide-react";
-import { Button } from "../../../user/src/components/ui/button";
-import { Input } from "../../../user/src/components/ui/input";
-import { Badge } from "../../../user/src/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 
 const Header = () => {
   return (
