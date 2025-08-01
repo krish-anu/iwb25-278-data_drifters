@@ -1,7 +1,7 @@
 import Backend.db as db;
 import Backend.models as models;
 import Backend.utils as Utils;
-
+import ballerina/io;
 import ballerina/http;
 import ballerina/log;
 import ballerina/time;
@@ -230,6 +230,7 @@ service / on new http:Listener(7070) {
         string mallId = "M" + id.toString();
 
         models:MallDoc? mallDocOptional = check getMallByMallId(mallId, mongoClient);
+        io:println("Hiiiiiiiiiiiiiiiii",mallDocOptional);
 
         if mallDocOptional is models:MallDoc {
             json[] shopsJson = from models:Shop s in mallDocOptional.shops
