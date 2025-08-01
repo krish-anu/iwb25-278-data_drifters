@@ -15,11 +15,13 @@ type Product = {
 type Props = {
   searchQuery?: string;
   title?: string;
+  onProductClick?: (product: Product) => void;
 };
 
 const FeaturedProductGrid = ({
   searchQuery = "",
   title = "Featured Indian Dishes",
+  onProductClick,
 }: Props) => {
   const allProducts: Product[] = [
     {
@@ -67,7 +69,11 @@ const FeaturedProductGrid = ({
         <h2 className="text-2xl font-bold mb-6">{title}</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {filteredProducts.map((product) => (
-            <ProductCard key={product.id} {...product} />
+            <ProductCard
+              key={product.id}
+              {...product}
+              onClick={() => onProductClick?.(product)} // 👈 Call it here
+            />
           ))}
         </div>
       </div>

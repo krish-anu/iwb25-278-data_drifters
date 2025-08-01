@@ -51,7 +51,7 @@ const ProductDetailCard = ({ product, onClose }: Props) => {
           </p>
 
           <div className="flex gap-2 mt-4">
-            <Button variant="cart">Add to Cart</Button>
+            <Button variant="cart">Order Now!</Button>
             <Button variant="outline" onClick={onClose}>
               Close
             </Button>
