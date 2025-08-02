@@ -1,21 +1,20 @@
+import Backend.db as db;
+import Backend.models as models;
+import Backend.utils as Utils;
+import ballerina/io;
 import ballerina/http;
 import ballerina/log;
 import ballerina/time;
 import ballerina/uuid;
 import ballerinax/mongodb;
-import Backend.models as models;
-import Backend.utils as Utils;
-import Backend.db as db;
 
 // Configuration
 configurable string mongodbConnectionString = ?;
 configurable string databaseName = ?;
 configurable string collectionName_users = ?;
 configurable string collectionName_products = ?;
+configurable string collectionName_shops = ?;
 // configurable string jwtSecret = ?;
-
-
-
 
 // MongoDB client configuration
 mongodb:ConnectionConfig mongoConfig = {
@@ -26,23 +25,22 @@ mongodb:Client mongoClient = check new (mongoConfig);
 
 // User types
 
-
 // Session storage (in-memory for simplicity)
 map<models:UserInfo> activeSessions = {};
 
 // CORS configuration
 @http:ServiceConfig {
     cors: {
-        allowOrigins: ["http://localhost:3000", "http://localhost:5173"],
+        allowOrigins: ["http://localhost:3000", "http://localhost:5173", "http://localhost:9090"],
         allowCredentials: true,
         allowHeaders: ["Content-Type", "Authorization"],
         allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
     }
 }
-service /auth on new http:Listener(9090) {
+service / on new http:Listener(7070) {
 
     // Login endpoint
-    resource function post login(models:LoginRequest loginReq) returns models:LoginResponse|http:InternalServerError|http:BadRequest|http:Unauthorized {
+    resource function post auth/login(models:LoginRequest loginReq) returns models:LoginResponse|http:InternalServerError|http:BadRequest|http:Unauthorized {
 
         // Validate input
         if loginReq.email.trim() == "" || loginReq.password.trim() == "" {
@@ -100,7 +98,7 @@ service /auth on new http:Listener(9090) {
     }
 
     // Register endpoint
-    resource function post register(models:User newUser) returns models:LoginResponse|http:InternalServerError|http:BadRequest|http:Conflict {
+    resource function post auth/register(models:User newUser) returns models:LoginResponse|http:InternalServerError|http:BadRequest|http:Conflict {
 
         // Validate input
         if newUser.email.trim() == "" || newUser.password.trim() == "" || newUser.name.trim() == "" {
@@ -157,7 +155,7 @@ service /auth on new http:Listener(9090) {
         string token = Utils:generateToken(userToCreate);
 
         // Store session
-       models:UserInfo userInfo = {
+        models:UserInfo userInfo = {
             _id: userToCreate._id ?: "",
             name: userToCreate.name,
             email: userToCreate.email
@@ -173,7 +171,7 @@ service /auth on new http:Listener(9090) {
     }
 
     // Logout endpoint
-    resource function post logout(@http:Header string? authorization) returns json {
+    resource function post auth/logout(@http:Header string? authorization) returns json {
         if authorization is string {
             string token = authorization.substring(7); // Remove "Bearer " prefix
             _ = activeSessions.remove(token);
@@ -185,7 +183,7 @@ service /auth on new http:Listener(9090) {
     }
 
     // Get user profile (protected route)
-    resource function get profile(@http:Header string? authorization) returns models:UserInfo|http:Unauthorized {
+    resource function get auth/profile(@http:Header string? authorization) returns models:UserInfo|http:Unauthorized {
         if authorization is () {
             return <http:Unauthorized>{
                 body: {
@@ -209,9 +207,57 @@ service /auth on new http:Listener(9090) {
 
         return userInfo;
     }
+
+    // Database functions
+
+    // This service can be used to manage products, similar to the auth service
+    // For simplicity, we are not implementing product management in this example   
+    // You can implement CRUD operations for products here
+    // Example: resource function post createProduct(models:Product product) returns models:ProductResponse
+    resource function get products() returns models:ProductResponse|error {
+        mongodb:Database database = check mongoClient->getDatabase(databaseName);
+        mongodb:Collection collection = check database->getCollection(collectionName_products);
+
+        stream<models:Product, error?> productStream = check collection->find({}, {}, (), models:Product);
+
+        models:Product[] products = check from models:Product product in productStream
+            select product;
+
+        return {products: products};
+    }
+
+    resource function get [int id]/shops() returns json|error {
+        string mallId = "M" + id.toString();
+
+        models:MallDoc? mallDocOptional = check getMallByMallId(mallId, mongoClient);
+        io:println("Hiiiiiiiiiiiiiiiii",mallDocOptional);
+
+        if mallDocOptional is models:MallDoc {
+            json[] shopsJson = from models:Shop s in mallDocOptional.shops
+                select {
+                    id: s.id,
+                    name: s.name,
+                    address: s.address,
+                    ownerName: s.ownerName,
+                    contactNumber: s.contactNumber,
+                    email: s.email,
+                    category: s.category,
+                    rating: s.rating,
+                    reviewCount: s.reviewCount,
+                    image: s.image,
+                    discount: s.discount
+                };
+            return {shops: shopsJson};
+        }
+
+        return {
+            status: "error",
+            message: "Mall not found for id " + id.toString()
+        };
+    }
+
 }
 
-// Database functions
 function findUserByEmail(string email) returns models:User|error {
     mongodb:Database database = check mongoClient->getDatabase(databaseName);
     mongodb:Collection collection = check database->getCollection(collectionName_users);
@@ -228,21 +274,20 @@ function findUserByEmail(string email) returns models:User|error {
     return error("User not found");
 }
 
-service  / on new http:Listener(9091) {
-    // This service can be used to manage products, similar to the auth service
-    // For simplicity, we are not implementing product management in this example   
-    // You can implement CRUD operations for products here
-    // Example: resource function post createProduct(models:Product product) returns models:ProductResponse
-    resource function get products() returns models:ProductResponse|error {
-        mongodb:Database database = check mongoClient->getDatabase(databaseName);
-        mongodb:Collection collection = check database->getCollection(collectionName_products);
+function getMallByMallId(string id, mongodb:Client mongoClient) returns models:MallDoc|error {
+    mongodb:Database database = check mongoClient->getDatabase(databaseName);
+    mongodb:Collection collection = check database->getCollection(collectionName_shops);
 
-        stream<models:Product, error?> productStream = check collection->find({}, {}, (), models:Product);
+    map<json> query = {"mallId": "M" + id.toString()};
 
-        models:Product[] products = check from models:Product product in productStream
-            select product;
+    stream<models:MallDoc, error?> mallStream = check collection->find(query, {}, (), models:MallDoc);
 
-        return {products: products};
+    models:MallDoc[] malls = check from models:MallDoc mall in mallStream
+        select mall;
+
+    if malls.length() > 0 {
+        return malls[0];
     }
-    
+
+    return error("Mall not found");
 }
