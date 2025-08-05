@@ -31,13 +31,13 @@ map<models:UserInfo> activeSessions = {};
 // CORS configuration
 @http:ServiceConfig {
     cors: {
-        allowOrigins: ["http://localhost:3000", "http://localhost:5173", "http://localhost:9090"],
+        allowOrigins: ["http://localhost:3000", "http://localhost:5173","http://localhost:8080"],
         allowCredentials: true,
         allowHeaders: ["Content-Type", "Authorization"],
         allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
     }
 }
-service / on new http:Listener(7070) {
+service / on new http:Listener(9090) {
 
     // Login endpoint
     resource function post auth/login(models:LoginRequest loginReq) returns models:LoginResponse|http:InternalServerError|http:BadRequest|http:Unauthorized {
@@ -227,8 +227,9 @@ service / on new http:Listener(7070) {
     }
 
     resource function get [int id]/shops() returns json|error {
+        io:println("MyyyyyyyyyyyID",id);
         string mallId = "M" + id.toString();
-
+        io:println("Hellooooooo",mallId);
         models:MallDoc? mallDocOptional = check getMallByMallId(mallId, mongoClient);
         io:println("Hiiiiiiiiiiiiiiiii",mallDocOptional);
 
@@ -278,8 +279,8 @@ function getMallByMallId(string id, mongodb:Client mongoClient) returns models:M
     mongodb:Database database = check mongoClient->getDatabase(databaseName);
     mongodb:Collection collection = check database->getCollection(collectionName_shops);
 
-    map<json> query = {"mallId": "M" + id.toString()};
-
+    map<json> query = {"mallId": id};
+    io:println("heyyyyy",query);
     stream<models:MallDoc, error?> mallStream = check collection->find(query, {}, (), models:MallDoc);
 
     models:MallDoc[] malls = check from models:MallDoc mall in mallStream
