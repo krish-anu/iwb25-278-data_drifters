@@ -4,6 +4,7 @@ import Header from "@/components/Header";
 import FeaturedProductGrid from "@/components/ProductsGrid";
 import CategoryNav from "@/components/CategoryNav";
 import Footer from "@/components/Footer";
+import ShopTitle from "@/components/ShopTitle";
 import { type Product } from "@/components/ProductCard";
 
 export function ShopPage() {
@@ -20,7 +21,7 @@ export function ShopPage() {
       {/* Header with search handler */}
       <Header onSearch={handleHeaderSearch} />
       <CategoryNav />
-
+      <ShopTitle />
       {/* Product Grid with product click handler */}
       <FeaturedProductGrid
         searchQuery={searchQuery}
