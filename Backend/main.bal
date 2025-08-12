@@ -227,11 +227,11 @@ service / on new http:Listener(9090) {
     }
 
     resource function get [int id]/shops() returns json|error {
-        io:println("MyyyyyyyyyyyID",id);
+        // io:println("MyyyyyyyyyyyID",id);
         string mallId = "M" + id.toString();
         io:println("Hellooooooo",mallId);
         models:MallDoc? mallDocOptional = check getMallByMallId(mallId, mongoClient);
-        io:println("Hiiiiiiiiiiiiiiiii",mallDocOptional);
+        // io:println("Hiiiiiiiiiiiiiiiii",mallDocOptional);
 
         if mallDocOptional is models:MallDoc {
             json[] shopsJson = from models:Shop s in mallDocOptional.shops
@@ -245,9 +245,10 @@ service / on new http:Listener(9090) {
                     category: s.category,
                     rating: s.rating,
                     reviewCount: s.reviewCount,
-                    image: s.image,
+                    image: s.imageUrl,
                     discount: s.discount
                 };
+            io:println(shopsJson);    
             return {shops: shopsJson};
         }
 
@@ -280,7 +281,7 @@ function getMallByMallId(string id, mongodb:Client mongoClient) returns models:M
     mongodb:Collection collection = check database->getCollection(collectionName_shops);
 
     map<json> query = {"mallId": id};
-    io:println("heyyyyy",query);
+    // io:println("heyyyyy",query);
     stream<models:MallDoc, error?> mallStream = check collection->find(query, {}, (), models:MallDoc);
 
     models:MallDoc[] malls = check from models:MallDoc mall in mallStream
