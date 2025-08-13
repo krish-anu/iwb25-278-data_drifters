@@ -5,6 +5,7 @@ public type User record {
     string name;
     string email;
     string password;
+    string? role;
     string createdAt?;
     string updatedAt?;
 };
@@ -25,4 +26,5 @@ public type UserInfo record {
     string _id;
     string name;
     string email;
+    string role;
 };
