@@ -29,7 +29,7 @@ export  const LogInForm =()=> {
         // console.log("Hi");
         alert(`Welcome, ${res.user.name} 🎉`);
 
-        navigate("/dashboard");
+        navigate("/admin/dashboard");
       } else {
         setError(res.message || "Login failed");
       }

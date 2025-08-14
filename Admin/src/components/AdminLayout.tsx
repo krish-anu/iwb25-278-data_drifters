@@ -18,8 +18,6 @@ const navigation = [
   { name: "Dashboard", href: "/admin/dashboard", icon: BarChart3 },
   { name: "Products", href: "/admin/products", icon: Package },
   { name: "Stores", href: "/admin/stores", icon: Store },
-  { name: "Analytics", href: "/admin/analytics", icon: TrendingUp },
-  { name: "Users", href: "/admin/users", icon: Users },
   { name: "Settings", href: "/admin/settings", icon: Settings },
 ];
 
