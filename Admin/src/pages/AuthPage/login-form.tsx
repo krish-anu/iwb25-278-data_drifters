@@ -1,17 +1,15 @@
-
-
 // src/pages/Login.tsx
 import { useState } from "react";
 import { Eye, EyeOff, Mail, Lock, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { loginUser } from "../services/authServices";
 
-export  const LogInForm =()=> {
+export const LogInForm = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);  
+  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -27,16 +25,24 @@ export  const LogInForm =()=> {
       if (res.status === "success") {
         localStorage.setItem("token", res.token);
         // console.log("Hi");
-        alert(`Welcome, ${res.user.name} 🎉`);
-
-        navigate("/dashboard");
+        
+        console.log("Res", res);
+        if (res.user.role == "admin") {
+          // alert(`Welcome, ${res.user.name} 🎉`);
+          navigate("/dashboard");
+          
+        } else {
+          alert("You don't have permission");
+        }
       } else {
         setError(res.message || "Login failed");
       }
     } catch (err: any) {
       console.log(err);
       setError(
-       err.response?.data.message || err.message || "Login failed. Please check your credentials."
+        err.response?.data.message ||
+          err.message ||
+          "Login failed. Please check your credentials."
       );
     } finally {
       setIsLoading(false);
@@ -64,7 +70,10 @@ export  const LogInForm =()=> {
 
           <div className="space-y-4">
             <div>
-              <label htmlFor="email" className="block text-gray-700 font-medium">
+              <label
+                htmlFor="email"
+                className="block text-gray-700 font-medium"
+              >
                 Email
               </label>
               <div className="relative">
@@ -83,7 +92,10 @@ export  const LogInForm =()=> {
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-gray-700 font-medium">
+              <label
+                htmlFor="password"
+                className="block text-gray-700 font-medium"
+              >
                 Password
               </label>
               <div className="relative">
@@ -130,4 +142,4 @@ export  const LogInForm =()=> {
       </div>
     </div>
   );
-}
+};
