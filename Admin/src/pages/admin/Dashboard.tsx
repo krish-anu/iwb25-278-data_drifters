@@ -10,8 +10,6 @@ import {
   CartesianGrid, 
   Tooltip, 
   ResponsiveContainer,
-  LineChart,
-  Line,
   PieChart,
   Pie,
   Cell
@@ -21,7 +19,6 @@ import {
   Package, 
   Users, 
   TrendingUp, 
-  ShoppingCart,
   Star
 } from "lucide-react";
 
@@ -123,6 +120,13 @@ const Dashboard = () => {
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={salesData}>
+                <defs>
+                  <linearGradient id="orangeGradient" x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0%" stopColor="#fb923c" />  {/* orange-400 */}
+                    <stop offset="50%" stopColor="#f97316" /> {/* orange-500 */}
+                    <stop offset="100%" stopColor="#ea580c" />{/* orange-600 */}
+                  </linearGradient>
+                </defs>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="month" />
                 <YAxis />
@@ -130,7 +134,7 @@ const Dashboard = () => {
                   name === 'sales' ? `$${value}` : value,
                   name === 'sales' ? 'Sales' : 'Visitors'
                 ]} />
-                <Bar dataKey="sales" fill="hsl(var(--primary))" />
+                <Bar dataKey="sales" fill="url(#orangeGradient)" />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>

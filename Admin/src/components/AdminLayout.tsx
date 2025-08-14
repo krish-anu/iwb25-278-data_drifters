@@ -37,7 +37,7 @@ const AdminLayout = () => {
             className={cn(
               "flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors",
               isActive
-                ? "bg-orange-500 text-white font-bold"
+                ? "bg-orange-400 text-white font-bold"
                 : "text-muted-foreground hover:bg-orange-500 hover:text-white hover:font-bold"
             )}
           >
@@ -52,7 +52,7 @@ const AdminLayout = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="bg-card border-b bg-orange-500">
+      <header className="bg-card border-b bg-gradient-to-r from-orange-400 via-orange-500 to-orange-600">
         <div className="flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
           <div className="flex items-center">
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
@@ -83,7 +83,7 @@ const AdminLayout = () => {
           </div>
 
           <div className="flex items-center space-x-4">
-            <Button variant="outline" size="sm" asChild>
+            <Button variant="destructive" size="sm" asChild>
               <Link to="/">Log out</Link>
             </Button>
           </div>
