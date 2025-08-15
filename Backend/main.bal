@@ -33,7 +33,7 @@ const string ROLE_CUSTOMER = "customer";
 // CORS configuration
 @http:ServiceConfig {
     cors: {
-        allowOrigins: ["http://localhost:3000", "http://localhost:5173","http://localhost:8080"],
+        allowOrigins: ["http://localhost:3000", "http://localhost:5173","http://localhost:8080","http://localhost:8082"],
         allowCredentials: true,
         allowHeaders: ["Content-Type", "Authorization"],
         allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
