@@ -17,7 +17,8 @@ import {
   Edit,
   Eye,
   Users,
-  Trash2
+  Trash2,
+  Search
 } from "lucide-react";
 
 interface StoreData {
@@ -122,6 +123,7 @@ const initialStores: StoreData[] = [
 
 const Stores = () => {
   const [stores, setStores] = useState<StoreData[]>(initialStores);
+  const [searchTerm, setSearchTerm] = useState("");
   const [selectedStore, setSelectedStore] = useState<StoreData | null>(null);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -138,6 +140,15 @@ const Stores = () => {
     { value: "closed", label: "Closed" },
     { value: "coming_soon", label: "Coming Soon" }
   ];
+
+  const filteredStores = stores.filter(store => {
+    const matchesSearch = store.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         store.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         store.manager.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         store.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         store.floor.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesSearch;
+  });
 
   const getStatusBadge = (status: StoreData["status"]) => {
     switch (status) {
@@ -241,7 +252,7 @@ const Stores = () => {
         
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
-            <Button>
+            <Button onClick={() => setFormData({})}>
               <Plus className="mr-2 h-4 w-4" />
               Add Store
             </Button>
@@ -675,9 +686,27 @@ const Stores = () => {
         </Card>
       </div>
 
+      {/* Search Bar */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Search Stores</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="relative">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search stores, categories, managers, or locations..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-8"
+            />
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Stores Grid */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {stores.map((store) => (
+        {filteredStores.map((store) => (
           <Card key={store.id} className="hover:shadow-lg transition-shadow">
             <div className="relative h-48 w-full overflow-hidden rounded-t-lg">
               <img 
