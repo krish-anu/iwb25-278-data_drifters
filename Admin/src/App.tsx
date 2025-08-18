@@ -32,6 +32,10 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import {LogInForm} from './pages/AuthPage/login-form'
 import SignUp from './pages/AuthPage/Signup'
 import SuperAdmin from './pages/SuperAdmin/SuperAdmin'
+import SuperAdminDashboard from './pages/SuperAdmin/dashboard'
+import SuperAdminProduct from './pages/SuperAdmin/product'
+import SuperAdminSettings from './pages/SuperAdmin/settings'
+import SuperAdminStores from './pages/SuperAdmin/stores'
 import NotFound from "./pages/NotFound";
 import AdminLayout from "./components/AdminLayout";
 import Dashboard from "./pages/admin/Dashboard";
@@ -58,8 +62,13 @@ const App = () => (
             <Route path="stores" element={<Stores />} />
             <Route path="settings" element={<Settings />} />
           </Route>
-          <Route path="/superadmin" element={<SuperAdmin />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+          <Route path="/superadmin" element={<SuperAdmin/>}>
+            <Route index element={<SuperAdminDashboard/>} />
+            <Route path="dashboard" element={<SuperAdminDashboard/>} />
+            <Route path="products" element={<SuperAdminProduct/>} />
+            <Route path="stores" element={<SuperAdminStores/>} />
+            <Route path="settings" element={<SuperAdminSettings/>} />
+          </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
