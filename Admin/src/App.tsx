@@ -37,6 +37,7 @@ import AdminLayout from "./components/AdminLayout";
 import Dashboard from "./pages/admin/Dashboard";
 import Products from "./pages/admin/Products";
 import Stores from "./pages/admin/Stores";
+import Settings from "./pages/admin/Settings";
 import "./App.css"
 
 const queryClient = new QueryClient();
@@ -55,6 +56,7 @@ const App = () => (
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="products" element={<Products />} />
             <Route path="stores" element={<Stores />} />
+            <Route path="settings" element={<Settings />} />
           </Route>
           <Route path="/superadmin" element={<SuperAdmin />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

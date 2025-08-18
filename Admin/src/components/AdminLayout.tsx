@@ -5,13 +5,12 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { 
   BarChart3, 
   Package, 
-  Users, 
   Settings, 
   Menu, 
   Home,
   Store,
-  TrendingUp
 } from "lucide-react";
+import mallMapIcon from "@/assets/mall-map-logo-black.png";
 import { cn } from "@/lib/utils";
 
 const navigation = [
@@ -76,8 +75,13 @@ const AdminLayout = () => {
               </SheetContent>
             </Sheet>
 
-            <Link to="/" className="flex items-center text-lg font-semibold ml-4 lg:ml-0">
-              <Home className="mr-2 h-5 w-5" />
+            <Link to="/admin/dashboard" className="flex items-center text-lg font-semibold ml-4 lg:ml-0">
+              <img 
+                src={mallMapIcon}
+                alt="Home" 
+                className="mr-2 h-20 w-18" 
+              />
+              {/* <Home className="mr-2 h-5 w-5" /> */}
               MallMap Admin
             </Link>
           </div>
