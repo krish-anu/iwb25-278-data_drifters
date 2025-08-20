@@ -2,12 +2,13 @@
 import Backend.db as db;
 import Backend.models as models;
 import Backend.utils as Utils;
-// import ballerina/io;
+import ballerina/io;
 import ballerina/http;
 // import ballerina/log;
 import ballerina/time;
 import ballerina/uuid;
 import ballerinax/mongodb;
+// import ballerinax/bson;
 
 // Configuration
 configurable string mongodbConnectionString = ?;
@@ -43,38 +44,44 @@ service / on new http:Listener(9090) {
 
     // ================= LOGIN =================
     resource function post auth/login(models:LoginRequest loginReq)
-            returns models:LoginResponse|http:InternalServerError|http:BadRequest|http:Unauthorized|http:Forbidden|http:Conflict {
+        returns models:LoginResponse|http:InternalServerError|http:BadRequest|http:Unauthorized|http:Forbidden|http:Conflict {
 
-        if loginReq.email.trim() == "" || loginReq.password.trim() == "" {
-            return errorResponse(400, "Email and password are required");
-        }
-
-        models:User|error userResult = findUserByEmail(loginReq.email);
-        if userResult is error {
-            return errorResponse(401, "Invalid email or password");
-        }
-
-        if !Utils:verifyPassword(loginReq.password, userResult.password) {
-            return errorResponse(401, "Invalid email or password");
-        }
-
-        string token = Utils:generateToken(userResult);
-
-        models:UserInfo userInfo = {
-            _id: userResult._id ?: "",
-            name: userResult.name,
-            email: userResult.email,
-            role: userResult.role ?: ROLE_CUSTOMER // default role if not set
-        };
-        activeSessions[token] = userInfo;
-
-        return {
-            status: "success",
-            message: "Login successful",
-            token: token,
-            user: userInfo
-        };
+    if loginReq.email.trim() == "" || loginReq.password.trim() == "" {
+        return errorResponse(400, "Email and password are required");
     }
+
+    models:User|error userResult = findUserByEmail(loginReq.email);
+    if userResult is error {
+        return errorResponse(401, "Invalid email or password");
+    }
+
+    if !Utils:verifyPassword(loginReq.password, userResult.password) {
+        return errorResponse(401, "Invalid email or password");
+    }
+
+    // 🚨 Block unapproved admins
+    if userResult.role == ROLE_ADMIN && !(userResult.accepted ?: false) {
+        return errorResponse(403, "Admin account pending approval by Super Admin");
+    }
+
+    string token = Utils:generateToken(userResult);
+
+    models:UserInfo userInfo = {
+        _id: userResult._id ?: "",
+        name: userResult.name,
+        email: userResult.email,
+        role: userResult.role ?: ROLE_CUSTOMER,
+        accepted: userResult.accepted ?: true
+    };
+    activeSessions[token] = userInfo;
+
+    return {
+        status: "success",
+        message: "Login successful",
+        token: token,
+        user: userInfo
+    };
+}
 
     // ================= REGISTER =================
     resource function post auth/register(models:User newUser)
@@ -97,10 +104,12 @@ service / on new http:Listener(9090) {
             email: newUser.email,
             password: hashedPassword,
             role: newUser.role ?: ROLE_CUSTOMER, // new user role
+            accepted: (newUser.role == ROLE_ADMIN) ? false : true,
             createdAt: now,
             updatedAt: now
         };
 
+        // io:println("userToCreate",userToCreate);
         if db:insertUser(userToCreate) is error {
             return errorResponse(500, "Failed to create user");
         }
@@ -113,7 +122,7 @@ service / on new http:Listener(9090) {
             role: userToCreate.role ?: ROLE_CUSTOMER
         };
         activeSessions[token] = userInfo;
-
+ 
         return {
             status: "success",
             message: "User registered successfully",
@@ -130,6 +139,99 @@ service / on new http:Listener(9090) {
         }
         return { status: "success", message: "Logged out successfully" };
     }
+
+    // ================= ADMIN APPROVAL =================
+    
+
+
+
+resource function put admin/approve/[string userId](@http:Header string? authorization)
+            returns http:Ok|http:InternalServerError|http:Unauthorized|http:Forbidden {
+        // Uncomment and implement authorization if needed
+        // models:UserInfo|http:Unauthorized userOrUnauthorized = getUserFromAuthHeader(authorization);
+        // if userOrUnauthorized is http:Unauthorized {
+        //     return userOrUnauthorized;
+        // }
+        // models:UserInfo currentUser = <models:UserInfo>userOrUnauthorized;
+        // if currentUser.role != "super_admin" {
+        //     return <http:Forbidden>{ body: { status: "error", message: "Access denied: Super Admin only" } };
+        // }
+
+        mongodb:UpdateResult|error response = approveAdmin(userId);
+        io:println("response", response);
+
+        if response is error {
+            io:println("Approve admin error: ", response.message());
+            return <http:InternalServerError>{
+                body: { status: "error", message: response.message() }
+            };
+        }
+        if response.matchedCount == 0 {
+            return <http:InternalServerError>{
+                body: { status: "error", message: "No admin found with that ID" }
+            };
+        }
+        return <http:Ok>{
+            body: { status: "success", message: "Admin approved successfully" }
+        };
+    }
+
+    // ... (keep existing resources: pendingAdmins, profile, products, shops unchanged)
+
+
+// ================= HELPER FUNCTIONS =================
+// .
+
+
+    
+
+resource function get users/pendingAdmins(@http:Header string? authorization)
+        returns json|http:Unauthorized|http:Forbidden|http:InternalServerError|error {
+
+    // models:UserInfo|http:Unauthorized userOrUnauthorized = getUserFromAuthHeader(authorization);
+    // if userOrUnauthorized is http:Unauthorized {
+    //     return userOrUnauthorized;
+    // }
+
+    // models:UserInfo currentUser = <models:UserInfo>userOrUnauthorized;
+    // if currentUser.role != "super_admin" {
+    //     return <http:Forbidden>{ body: { status: "error", message: "Access denied" } };
+    // }
+
+    mongodb:Database|error dbResult = mongoClient->getDatabase(databaseName);
+    if dbResult is error {
+        return <http:InternalServerError>{ body: { status: "error", message: "Database error" } };
+    }
+    mongodb:Database database = dbResult;
+
+    mongodb:Collection|error colResult = database->getCollection(collectionName_users);
+    if colResult is error {
+        return <http:InternalServerError>{ body: { status: "error", message: "Collection error" } };
+    }
+    mongodb:Collection collection = colResult;
+
+    map<json> filter = { "role": "admin", "accepted": false };
+    stream<models:User, error?> userStream = check collection->find(filter, {}, (), models:User);
+
+    models:User[] users = check from models:User u in userStream select u;
+
+    // Convert User[] to json[]
+    json[] usersJson = from models:User u in users
+                       select {
+                           _id: u._id,
+                           name: u.name,
+                           email: u.email,
+                           role: u.role,
+                           accepted: u.accepted,
+                           createdAt: u.createdAt,
+                           updatedAt: u.updatedAt
+                       };
+
+    return <json>{ users: usersJson };
+}
+
+
+
 
     // ================= PROFILE =================
     resource function get auth/profile(@http:Header string? authorization)
@@ -163,7 +265,7 @@ service / on new http:Listener(9090) {
 
 
     mongodb:Database database;
-    error? err = ();
+    // error? err = ();
     // Get database connection
     database = check mongoClient->getDatabase(databaseName);
 
@@ -172,6 +274,7 @@ service / on new http:Listener(9090) {
     stream<models:Product, error?> productStream = check collection->find({}, {}, (), models:Product);
 
     models:Product[] products = check from models:Product product in productStream select product;
+    io:println("Retrived products",products);
 
     return { products: products };
 }
@@ -284,3 +387,29 @@ function errorResponse(int statusCode, string msg)
         message: msg
     };
 }
+
+
+
+
+
+
+function approveAdmin(string userId) returns mongodb:UpdateResult|error {
+    mongodb:Database database = check mongoClient->getDatabase(databaseName);
+    mongodb:Collection collection = check database->getCollection(collectionName_users);
+
+    map<json> filter = { "_id": userId };
+
+    // Use Unicode escape for "$set"
+    mongodb:Update updateDoc = { set: { "accepted": true } };
+
+    mongodb:UpdateOptions options = { upsert: false };
+    mongodb:UpdateResult|error response = collection->updateOne(filter, updateDoc, options);
+
+    if response is error {
+        io:println("Update error: ", response.message());
+        return error(response.message());
+    }
+
+    return response;
+}
+
