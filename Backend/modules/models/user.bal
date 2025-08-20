@@ -6,6 +6,7 @@ public type User record {
     string email;
     string password;
     string? role;
+    boolean accepted?;
     string createdAt?;
     string updatedAt?;
 };
@@ -27,4 +28,5 @@ public type UserInfo record {
     string name;
     string email;
     string role;
+    boolean accepted?;
 };
