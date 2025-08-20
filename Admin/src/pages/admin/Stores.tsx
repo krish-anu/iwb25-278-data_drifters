@@ -7,7 +7,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { useToast } from "@/hooks/use-toast";
 import { 
   Store, 
   MapPin, 
@@ -17,7 +16,9 @@ import {
   Plus,
   Edit,
   Eye,
-  Users
+  Users,
+  Trash2,
+  Search
 } from "lucide-react";
 
 interface StoreData {
@@ -34,6 +35,7 @@ interface StoreData {
   manager: string;
   employees: number;
   monthlyRevenue: number;
+  image: string;
 }
 
 const initialStores: StoreData[] = [
@@ -50,7 +52,8 @@ const initialStores: StoreData[] = [
     status: "open",
     manager: "Sarah Johnson",
     employees: 8,
-    monthlyRevenue: 62500
+    monthlyRevenue: 62500,
+    image: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=400&h=300&fit=crop"
   },
   {
     id: 2,
@@ -65,7 +68,8 @@ const initialStores: StoreData[] = [
     status: "open",
     manager: "Mike Chen",
     employees: 6,
-    monthlyRevenue: 98000
+    monthlyRevenue: 98000,
+    image: "https://images.unsplash.com/photo-1560472355-536de3962603?w=400&h=300&fit=crop"
   },
   {
     id: 3,
@@ -80,7 +84,8 @@ const initialStores: StoreData[] = [
     status: "open",
     manager: "Emily Davis",
     employees: 4,
-    monthlyRevenue: 22500
+    monthlyRevenue: 22500,
+    image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=300&fit=crop"
   },
   {
     id: 4,
@@ -95,7 +100,8 @@ const initialStores: StoreData[] = [
     status: "open",
     manager: "David Wilson",
     employees: 12,
-    monthlyRevenue: 84000
+    monthlyRevenue: 84000,
+    image: "https://images.unsplash.com/photo-1559056199-641a0ac8b55e?w=400&h=300&fit=crop"
   },
   {
     id: 5,
@@ -110,20 +116,39 @@ const initialStores: StoreData[] = [
     status: "coming_soon",
     manager: "Lisa Martinez",
     employees: 5,
-    monthlyRevenue: 67500
+    monthlyRevenue: 67500,
+    image: "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400&h=300&fit=crop"
   }
 ];
 
 const Stores = () => {
   const [stores, setStores] = useState<StoreData[]>(initialStores);
+  const [searchTerm, setSearchTerm] = useState("");
   const [selectedStore, setSelectedStore] = useState<StoreData | null>(null);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [editingStore, setEditingStore] = useState<StoreData | null>(null);
+  const [storeToDelete, setStoreToDelete] = useState<StoreData | null>(null);
   const [formData, setFormData] = useState<Partial<StoreData>>({});
-  const { toast } = useToast();
 
   const categories = ["Fashion", "Electronics", "Books", "Food & Beverage", "Sports", "Services", "Entertainment"];
   const floors = ["Ground Floor", "First Floor", "Second Floor", "Third Floor"];
   const locations = ["Section A", "Section B", "Section C", "Section D", "Section E", "Section F"];
+  const statuses = [
+    { value: "open", label: "Open" },
+    { value: "closed", label: "Closed" },
+    { value: "coming_soon", label: "Coming Soon" }
+  ];
+
+  const filteredStores = stores.filter(store => {
+    const matchesSearch = store.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         store.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         store.manager.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         store.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         store.floor.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesSearch;
+  });
 
   const getStatusBadge = (status: StoreData["status"]) => {
     switch (status) {
@@ -138,10 +163,9 @@ const Stores = () => {
     }
   };
 
-  const handleAddStore = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleAddStore = () => {
     const newStore: StoreData = {
-      id: stores.length + 1,
+      id: Math.max(...stores.map(s => s.id)) + 1,
       name: formData.name || "",
       category: formData.category || "",
       floor: formData.floor || "",
@@ -150,19 +174,66 @@ const Stores = () => {
       phone: formData.phone || "",
       email: formData.email || "",
       hours: formData.hours || "",
-      status: "open",
+      status: formData.status || "open",
       manager: formData.manager || "",
       employees: formData.employees || 0,
-      monthlyRevenue: 0
+      monthlyRevenue: formData.monthlyRevenue || 0,
+      image: formData.image || "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=400&h=300&fit=crop"
     };
     
     setStores([...stores, newStore]);
     setFormData({});
     setIsAddDialogOpen(false);
-    toast({
-      title: "Store Added",
-      description: "New store has been successfully added to the mall.",
-    });
+  };
+
+  const handleEditStore = () => {
+    if (!editingStore) return;
+    
+    const updatedStore: StoreData = {
+      ...editingStore,
+      name: formData.name || editingStore.name,
+      category: formData.category || editingStore.category,
+      floor: formData.floor || editingStore.floor,
+      location: formData.location || editingStore.location,
+      description: formData.description || editingStore.description,
+      phone: formData.phone || editingStore.phone,
+      email: formData.email || editingStore.email,
+      hours: formData.hours || editingStore.hours,
+      status: formData.status || editingStore.status,
+      manager: formData.manager || editingStore.manager,
+      employees: formData.employees !== undefined ? formData.employees : editingStore.employees,
+      monthlyRevenue: formData.monthlyRevenue !== undefined ? formData.monthlyRevenue : editingStore.monthlyRevenue,
+      image: formData.image || editingStore.image,
+    };
+    
+    setStores(stores.map(store => store.id === editingStore.id ? updatedStore : store));
+    setFormData({});
+    setEditingStore(null);
+    setIsEditDialogOpen(false);
+  };
+
+  const openEditDialog = (store: StoreData) => {
+    setEditingStore(store);
+    setFormData(store);
+    setIsEditDialogOpen(true);
+  };
+
+  const openDeleteDialog = (store: StoreData) => {
+    setStoreToDelete(store);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (storeToDelete) {
+      setStores(stores.filter(s => s.id !== storeToDelete.id));
+      setStoreToDelete(null);
+      setIsDeleteDialogOpen(false);
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setStoreToDelete(null);
+    setIsDeleteDialogOpen(false);
   };
 
   const totalRevenue = stores.reduce((sum, store) => sum + store.monthlyRevenue, 0);
@@ -181,7 +252,7 @@ const Stores = () => {
         
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
-            <Button>
+            <Button onClick={() => setFormData({})}>
               <Plus className="mr-2 h-4 w-4" />
               Add Store
             </Button>
@@ -193,7 +264,7 @@ const Stores = () => {
                 Add a new store to your mall directory.
               </DialogDescription>
             </DialogHeader>
-            <form onSubmit={handleAddStore} className="space-y-4">
+            <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="name">Store Name</Label>
@@ -258,6 +329,34 @@ const Stores = () => {
                 />
               </div>
 
+              <div>
+                <Label htmlFor="image">Store Image</Label>
+                <Input
+                  id="image"
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = (event) => {
+                        setFormData({ ...formData, image: event.target?.result as string });
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                />
+                {formData.image && (
+                  <div className="mt-2">
+                    <img 
+                      src={formData.image} 
+                      alt="Preview" 
+                      className="w-32 h-32 object-cover rounded-lg border"
+                    />
+                  </div>
+                )}
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="phone">Phone</Label>
@@ -278,7 +377,7 @@ const Stores = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div>
                   <Label htmlFor="hours">Operating Hours</Label>
                   <Input
@@ -296,25 +395,253 @@ const Stores = () => {
                     onChange={(e) => setFormData({ ...formData, manager: e.target.value })}
                   />
                 </div>
+                <div>
+                  <Label htmlFor="status">Status</Label>
+                  <Select value={formData.status || "open"} onValueChange={(value) => setFormData({ ...formData, status: value as StoreData["status"] })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {statuses.map((status) => (
+                        <SelectItem key={status.value} value={status.value}>{status.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="employees">Number of Employees</Label>
+                  <Input
+                    id="employees"
+                    type="number"
+                    value={formData.employees || ""}
+                    onChange={(e) => setFormData({ ...formData, employees: parseInt(e.target.value) })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="monthlyRevenue">Monthly Revenue ($)</Label>
+                  <Input
+                    id="monthlyRevenue"
+                    type="number"
+                    value={formData.monthlyRevenue || ""}
+                    onChange={(e) => setFormData({ ...formData, monthlyRevenue: parseInt(e.target.value) })}
+                  />
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button onClick={handleAddStore}>Add Store</Button>
+              </DialogFooter>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {/* Edit Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Edit Store</DialogTitle>
+            <DialogDescription>
+              Update store details and information.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="employees">Number of Employees</Label>
+                <Label htmlFor="edit-name">Store Name</Label>
                 <Input
-                  id="employees"
+                  id="edit-name"
+                  value={formData.name || ""}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-category">Category</Label>
+                <Select value={formData.category || ""} onValueChange={(value) => setFormData({ ...formData, category: value })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((cat) => (
+                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="edit-floor">Floor</Label>
+                <Select value={formData.floor || ""} onValueChange={(value) => setFormData({ ...formData, floor: value })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select floor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {floors.map((floor) => (
+                      <SelectItem key={floor} value={floor}>{floor}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="edit-location">Location</Label>
+                <Select value={formData.location || ""} onValueChange={(value) => setFormData({ ...formData, location: value })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select location" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {locations.map((loc) => (
+                      <SelectItem key={loc} value={loc}>{loc}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="edit-description">Description</Label>
+              <Textarea
+                id="edit-description"
+                value={formData.description || ""}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                required
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="edit-image">Store Image</Label>
+              <Input
+                id="edit-image"
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                      setFormData({ ...formData, image: event.target?.result as string });
+                    };
+                    reader.readAsDataURL(file);
+                  }
+                }}
+              />
+              {formData.image && (
+                <div className="mt-2">
+                  <img 
+                    src={formData.image} 
+                    alt="Preview" 
+                    className="w-32 h-32 object-cover rounded-lg border"
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="edit-phone">Phone</Label>
+                <Input
+                  id="edit-phone"
+                  value={formData.phone || ""}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-email">Email</Label>
+                <Input
+                  id="edit-email"
+                  type="email"
+                  value={formData.email || ""}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <Label htmlFor="edit-hours">Operating Hours</Label>
+                <Input
+                  id="edit-hours"
+                  value={formData.hours || ""}
+                  onChange={(e) => setFormData({ ...formData, hours: e.target.value })}
+                  placeholder="e.g., 9:00 AM - 9:00 PM"
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-manager">Manager</Label>
+                <Input
+                  id="edit-manager"
+                  value={formData.manager || ""}
+                  onChange={(e) => setFormData({ ...formData, manager: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-status">Status</Label>
+                <Select value={formData.status || ""} onValueChange={(value) => setFormData({ ...formData, status: value as StoreData["status"] })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {statuses.map((status) => (
+                      <SelectItem key={status.value} value={status.value}>{status.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="edit-employees">Number of Employees</Label>
+                <Input
+                  id="edit-employees"
                   type="number"
                   value={formData.employees || ""}
                   onChange={(e) => setFormData({ ...formData, employees: parseInt(e.target.value) })}
                 />
               </div>
+              <div>
+                <Label htmlFor="edit-monthlyRevenue">Monthly Revenue ($)</Label>
+                <Input
+                  id="edit-monthlyRevenue"
+                  type="number"
+                  value={formData.monthlyRevenue || ""}
+                  onChange={(e) => setFormData({ ...formData, monthlyRevenue: parseInt(e.target.value) })}
+                />
+              </div>
+            </div>
 
-              <DialogFooter>
-                <Button type="submit">Add Store</Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
-      </div>
+            <DialogFooter>
+              <Button onClick={handleEditStore}>Update Store</Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Store</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete "{storeToDelete?.name}"? This action cannot be undone and will remove all associated data.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={handleCancelDelete}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleConfirmDelete}>
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-4">
@@ -359,10 +686,39 @@ const Stores = () => {
         </Card>
       </div>
 
+      {/* Search Bar */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Search Stores</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="relative">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search stores, categories, managers, or locations..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-8"
+            />
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Stores Grid */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {stores.map((store) => (
+        {filteredStores.map((store) => (
           <Card key={store.id} className="hover:shadow-lg transition-shadow">
+            <div className="relative h-48 w-full overflow-hidden rounded-t-lg">
+              <img 
+                src={store.image} 
+                alt={store.name}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=400&h=300&fit=crop";
+                }}
+              />
+            </div>
             <CardHeader>
               <div className="flex justify-between items-start">
                 <div>
@@ -373,7 +729,11 @@ const Stores = () => {
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              <p className="text-sm text-muted-foreground">{store.description}</p>
+              <p className="text-sm text-muted-foreground">
+                {store.description.length > 80 
+                  ? `${store.description.substring(0, 80)}...` 
+                  : store.description}
+              </p>
               
               <div className="space-y-2 text-sm">
                 <div className="flex items-center">
@@ -412,7 +772,12 @@ const Stores = () => {
               </div>
 
               <div className="flex space-x-2">
-                <Button variant="default" size="sm" className="flex-1">
+                <Button 
+                  variant="default" 
+                  size="sm" 
+                  className="flex-1"
+                  onClick={() => openEditDialog(store)}
+                >
                   <Edit className="mr-2 h-4 w-4" />
                   Edit
                 </Button>
@@ -423,13 +788,22 @@ const Stores = () => {
                   onClick={() => setSelectedStore(store)}
                 >
                   <Eye className="mr-2 h-4 w-4" />
-                  View Details
+                  View
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => openDeleteDialog(store)}
+                  className="text-red-600 hover:bg-red-50"
+                >
+                  <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
+
 
       {/* Store Details Dialog */}
       <Dialog open={!!selectedStore} onOpenChange={() => setSelectedStore(null)}>
