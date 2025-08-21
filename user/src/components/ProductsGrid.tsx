@@ -1,65 +1,34 @@
+// FeaturedProductGrid.tsx
 import ProductCard from "./ProductCard";
-import BiriyaniImg from "@/assets/Biriyani.jpg";
-import PaneerImg from "@/assets/paneer.jpeg";
-import DosaImg from "@/assets/Dosa.jpeg";
-import GulabImg from "@/assets/gulab.jpeg";
-
-type Product = {
+export type Product = {
   id: string;
   name: string;
   image: string;
   price: number;
   shopId: string;
+  // mallId?: string; // add if you’re using it in the payload
 };
 
 type Props = {
+  products: Product[];
   searchQuery?: string;
   title?: string;
   onProductClick?: (product: Product) => void;
+  onOrderNow?: (product: Product) => void; // 👈 ADDED
 };
 
 const FeaturedProductGrid = ({
+  products,
   searchQuery = "",
-  title = "Featured Indian Dishes",
+  title = "Featured",
   onProductClick,
+  onOrderNow, // 👈 ADDED
 }: Props) => {
-  const allProducts: Product[] = [
-    {
-      id: "p1",
-      name: "Chicken Biryani",
-      image: BiriyaniImg,
-      price: 1200,
-      shopId: "2", // Chola Authentic Cuisine
-    },
-    {
-      id: "p2",
-      name: "Paneer Butter Masala",
-      image: PaneerImg,
-      price: 950,
-      shopId: "2",
-    },
-    {
-      id: "p3",
-      name: "Masala Dosa",
-      image: DosaImg,
-      price: 700,
-      shopId: "2",
-    },
-    {
-      id: "p4",
-      name: "Gulab Jamun",
-      image: GulabImg,
-      price: 400,
-      shopId: "2",
-    },
-  ];
-
-  // Filter products by searchQuery if provided
   const filteredProducts = searchQuery
-    ? allProducts.filter((p) =>
+    ? products.filter((p) =>
         p.name.toLowerCase().includes(searchQuery.toLowerCase())
       )
-    : allProducts;
+    : products;
 
   if (filteredProducts.length === 0) return null;
 
@@ -72,7 +41,8 @@ const FeaturedProductGrid = ({
             <ProductCard
               key={product.id}
               {...product}
-              onClick={() => onProductClick?.(product)} // 👈 Call it here
+              onClick={() => onProductClick?.(product)}
+              onOrderNow={() => onOrderNow?.(product)} // 👈 ADDED
             />
           ))}
         </div>
