@@ -7,7 +7,7 @@ export type Product = {
   image: string;
   price: number;
   shopId: string;
-  // mallId?: string;
+  mallId?: string;
 };
 
 type Props = Product & {

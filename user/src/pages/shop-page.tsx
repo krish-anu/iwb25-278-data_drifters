@@ -63,7 +63,7 @@ export function ShopPage() {
       toast({
         title: "Order placed",
         description: `${product.name} has been ordered.`,
-        variant: "success", // shadcn supports success if you have it; if not, remove variant
+        variant: "default", // shadcn supports success if you have it; if not, remove variant
       });
     } catch (e) {
       console.error(e);
