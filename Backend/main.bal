@@ -243,41 +243,59 @@ resource function get users/pendingAdmins(@http:Header string? authorization)
 
 
     // ================= PRODUCTS (Admin & Seller only) =================
-   resource function get products(@http:Header string? authorization)
-        returns models:ProductResponse|http:Unauthorized|http:Response|http:InternalServerError|error {
+// ...
+resource function get [string shopId]/products() returns json|http:NotFound|http:InternalServerError|error {
 
-    models:UserInfo|http:Unauthorized userOrUnauthorized = getUserFromAuthHeader(authorization);
-    if userOrUnauthorized is http:Unauthorized {
-        return userOrUnauthorized;
-    }
+    // Connect to database and collection
+    mongodb:Database database = check mongoClient->getDatabase(databaseName);
+    mongodb:Collection mallCollection = check database->getCollection(collectionName_shops);
 
-    models:UserInfo user = <models:UserInfo>userOrUnauthorized;
+    // Aggregation pipeline
+    map<json>[] pipeline = [
+        { "$match": { "shops.id": shopId } },
+        { "$unwind": "$shops" },
+        { "$match": { "shops.id": shopId } },
+        {
+            "$project": {
+                "_id": 0,
+                "products": "$shops.products",
+                "shopId": "$shops.id",
+                "shopName": "$shops.name",
+                "mallId": "$mallId",
+                "mallName": "$mallName"
+            }
+        }
+    ];
 
-    if !checkRole(user, ROLE_ADMIN, ROLE_SELLER) {
-    http:Response forbiddenResponse = new;
-    forbiddenResponse.statusCode = 403;
-    forbiddenResponse.setJsonPayload({
-        status: "error",
-        message: "Access denied: Admins or Sellers only"
-    });
-    return forbiddenResponse;
+    // Run aggregation
+    stream<json, error?> results = check mallCollection->aggregate(pipeline, json);
+    // Convert stream to array
+// Convert stream to array
+json[] documents = check from var doc in results select doc;
+
+// Check if we got any documents
+if documents.length() == 0 {
+    return <http:NotFound>{
+        body: { status: "error", message: "Shop not found: " + shopId }
+    };
 }
 
+// Cast the first document to map<json> to access its fields
+map<json> firstDoc = <map<json>>documents[0];
 
-    mongodb:Database database;
-    // error? err = ();
-    // Get database connection
-    database = check mongoClient->getDatabase(databaseName);
+// Return products
+return <json>{
+    shopId: firstDoc["shopId"],
+    shopName: firstDoc["shopName"],
+    mallId: firstDoc["mallId"],
+    mallName: firstDoc["mallName"],
+    products: firstDoc["products"]
+};
 
-    mongodb:Collection collection = check database->getCollection(collectionName_products);
 
-    stream<models:Product, error?> productStream = check collection->find({}, {}, (), models:Product);
 
-    models:Product[] products = check from models:Product product in productStream select product;
-    io:println("Retrived products",products);
-
-    return { products: products };
 }
+
 
     // ================= SHOPS (Public) =================
     resource function get [int id]/shops() returns json|error {
@@ -302,8 +320,10 @@ resource function get users/pendingAdmins(@http:Header string? authorization)
             return { shops: shopsJson };
         }
 
+       
         return { status: "error", message: "Mall not found for id " + id.toString() };
     }
+    
 }
 
 // ================= HELPER FUNCTIONS =================
