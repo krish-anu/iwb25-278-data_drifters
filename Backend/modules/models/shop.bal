@@ -1,5 +1,9 @@
+// Define the product and shop records
+
+
 public type Shop record {
     string id;
+
     string name;
     string address;
     string ownerName;
@@ -12,9 +16,13 @@ public type Shop record {
     int reviewCount?;
     string image?;
     int discount?;
+
 };
 
+// Define the MallDoc record to match your MongoDB collection
 public type MallDoc record {
     string mallId;
-    Shop[] shops;
+    string mallName;
+    string address;
+    Shop[] shops; // This array will contain the Shop records
 };

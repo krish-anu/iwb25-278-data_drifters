@@ -1,12 +1,13 @@
 // src/pages/Signup.tsx
 import { useState } from "react";
-import { Eye, EyeOff, User, Mail, Lock, Sparkles } from "lucide-react";
+import { Eye, EyeOff, User, Mail, Lock, Sparkles, Shield } from "lucide-react";
 import { registerUser } from "../services/authServices";
 
 export default function Signup() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [role, setRole] = useState("customer"); // default role
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -17,8 +18,8 @@ export default function Signup() {
     setError("");
 
     try {
-      const res = await registerUser(name, email, password);
-      console.log(res.status)
+      const res = await registerUser(name, email, password, role); // pass role
+      console.log(res.status);
       if (res.status === "success") {
         localStorage.setItem("token", res.token);
         alert(`Welcome, ${res.user.name} 🎉`);
@@ -26,7 +27,7 @@ export default function Signup() {
         setError(res.message || "Signup failed");
       }
     } catch (err: any) {
-      setError (err.response?.data.message || err.message);
+      setError(err.response?.data.message || err.message);
     } finally {
       setIsLoading(false);
     }
@@ -47,6 +48,7 @@ export default function Signup() {
           </div>
 
           <div className="space-y-4">
+            {/* Full Name */}
             <div>
               <label htmlFor="name" className="block text-gray-700 font-medium">
                 Full Name
@@ -66,11 +68,9 @@ export default function Signup() {
               </div>
             </div>
 
+            {/* Email */}
             <div>
-              <label
-                htmlFor="email"
-                className="block text-gray-700 font-medium"
-              >
+              <label htmlFor="email" className="block text-gray-700 font-medium">
                 Email
               </label>
               <div className="relative">
@@ -88,11 +88,9 @@ export default function Signup() {
               </div>
             </div>
 
+            {/* Password */}
             <div>
-              <label
-                htmlFor="password"
-                className="block text-gray-700 font-medium"
-              >
+              <label htmlFor="password" className="block text-gray-700 font-medium">
                 Password
               </label>
               <div className="relative">
@@ -116,10 +114,33 @@ export default function Signup() {
                 </button>
               </div>
             </div>
+
+            {/* Role Selection */}
+            <div>
+              <label htmlFor="role" className="block text-gray-700 font-medium">
+                Role
+              </label>
+              <div className="relative">
+                <Shield className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <select
+                  id="role"
+                  value={role}
+                  onChange={(e) => setRole(e.target.value)}
+                  disabled={isLoading}
+                  className="pl-11 h-12 w-full border-2 border-gray-200 rounded-xl bg-white/50 focus:border-blue-500 outline-none"
+                >
+                  <option value="super-admin">Super Admin</option>
+                  <option value="admin">Admin</option>
+                  <option value="customer">Customer</option>
+                </select>
+              </div>
+            </div>
           </div>
 
+          {/* Error */}
           {error && <p className="text-red-600 text-sm">{error}</p>}
 
+          {/* Submit */}
           <button
             type="submit"
             disabled={isLoading}
@@ -127,11 +148,14 @@ export default function Signup() {
           >
             {isLoading ? "Creating Account..." : "Sign Up"}
           </button>
-            <p className="text-center text-gray-500 text-sm">
-                Already have an account?{" "}
-                <a href="/" className="text-blue-600 hover:underline">
-                Sign In
-                </a>    </p>
+
+          {/* Sign in link */}
+          <p className="text-center text-gray-500 text-sm">
+            Already have an account?{" "}
+            <a href="/" className="text-blue-600 hover:underline">
+              Sign In
+            </a>
+          </p>
         </form>
       </div>
     </div>

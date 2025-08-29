@@ -1,3 +1,4 @@
+
 public type Product record {|
     string id;
     string name;
@@ -9,6 +10,10 @@ public type Product record {|
     string status?;
 |};
 
+
+
+
 public type ProductResponse record {|
     Product[] products;
 |};
+

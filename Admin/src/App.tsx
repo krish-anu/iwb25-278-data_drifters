@@ -1,37 +1,12 @@
-// import { BrowserRouter, Route, Routes } from 'react-router-dom'
-// import {LogInForm} from './pages/AuthPage/login-form'
-// import SignUp from './pages/AuthPage/Signup'
-// import DashboardPage from './pages/Dashboard-page'
-// import "./App.css"
-// import SuperAdmin from './pages/SuperAdmin/SuperAdmin'
-
-// function App() {
-
-//   return (
-//     <>
-//       <BrowserRouter>
-//         <Routes>
-//           <Route path="/" element={<LogInForm />} />
-//           <Route path="/admin" element={<DashboardPage />} />
-//           <Route path="/signup" element={<SignUp />} />
-//           <Route path="/superadmin" element={<SuperAdmin />} />
-//         </Routes>
-//       </BrowserRouter>
-//     </>
-//   )
-// }
-
-// export default App
-
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import {LogInForm} from './pages/AuthPage/login-form'
-import SignUp from './pages/AuthPage/Signup'
-import SuperAdmin from './pages/SuperAdmin/SuperAdmin'
+
+import { LogInForm } from './pages/AuthPage/login-form';
+import SignUp from './pages/AuthPage/Signup';
+import SuperAdmin from './pages/SuperAdmin/SuperAdmin';
 import NotFound from "./pages/NotFound";
 import AdminLayout from "./components/AdminLayout";
 import Dashboard from "./pages/admin/Dashboard";
@@ -42,12 +17,15 @@ import "./App.css"
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
+const App = () => {
+  const token = localStorage.getItem("token") || "";
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
         <Routes>
           <Route path="/" element={<LogInForm />} />
           <Route path="/signup" element={<SignUp />} />
@@ -65,6 +43,6 @@ const App = () => (
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
-);
+);}
 
 export default App;
