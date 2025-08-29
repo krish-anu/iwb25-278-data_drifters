@@ -32,16 +32,12 @@ mongodb:Client mongoClient = check new (mongoConfig);
 
 // User types
 
-// Role constants
-const string ROLE_ADMIN = "admin";
-const string ROLE_SELLER = "seller";
-const string ROLE_USER = "user";
+
 
 // Session storage (in-memory for simplicity)
 map<models:UserInfo> activeSessions = {};
 
-// Session storage (in-memory)
-map<models:UserInfo> activeSessions = {};
+
 
 // Define roles
 const string ROLE_ADMIN = "admin";
@@ -159,22 +155,10 @@ service / on new http:Listener(9090) {
     }
 
 
-        var result = getUserFromAuthHeader(authorization);
-        return result;
-    }
+   
 
     // Get user profile (protected route)
-    resource function get auth/profile(@http:Header string? authorization) returns models:UserInfo|http:Unauthorized {
-        if authorization is () {
-            return <http:Unauthorized>{
-                body: {
-                    status: "error",
-                    message: "Authorization header required"
-                }
-    // ================= ADMIN APPROVAL =================
     
-            };
-        }
 
     // ================= ADMIN APPROVAL =================
     
@@ -211,40 +195,7 @@ resource function put admin/approve/[string userId](@http:Header string? authori
             body: { status: "success", message: "Admin approved successfully" }
         };
     }
-    resource function put admin/approve/[string userId](@http:Header string? authorization)
-            returns http:Ok|http:InternalServerError|http:Unauthorized|http:Forbidden {
-        // Uncomment and implement authorization if needed
-        // models:UserInfo|http:Unauthorized userOrUnauthorized = getUserFromAuthHeader(authorization);
-        // if userOrUnauthorized is http:Unauthorized {
-        //     return userOrUnauthorized;
-        // }
-        // models:UserInfo currentUser = <models:UserInfo>userOrUnauthorized;
-        // if currentUser.role != "super_admin" {
-        //     return <http:Forbidden>{ body: { status: "error", message: "Access denied: Super Admin only" } };
-        // }
-
-        mongodb:UpdateResult|error response = approveAdmin(userId);
-        io:println("response", response);
-
-        if response is error {
-            io:println("Approve admin error: ", response.message());
-            return <http:InternalServerError>{
-                body: { status: "error", message: response.message() }
-            };
-        }
-        if response.matchedCount == 0 {
-            return <http:InternalServerError>{
-                body: { status: "error", message: "No admin found with that ID" }
-            };
-        }
-
-        return <http:Ok>{
-            body: {
-                status: "success",
-                message: "Admin approved successfully"
-            }
-        };
-    }
+  
 
     // ... (keep existing resources: pendingAdmins, profile, products, shops unchanged)
 
@@ -360,50 +311,7 @@ resource function put admin/approve/[string userId](@http:Header string? authori
     }
 
 
-resource function get users/pendingAdmins(@http:Header string? authorization)
-        returns json|http:Unauthorized|http:Forbidden|http:InternalServerError|error {
 
-    // models:UserInfo|http:Unauthorized userOrUnauthorized = getUserFromAuthHeader(authorization);
-    // if userOrUnauthorized is http:Unauthorized {
-    //     return userOrUnauthorized;
-    // }
-
-    // models:UserInfo currentUser = <models:UserInfo>userOrUnauthorized;
-    // if currentUser.role != "super_admin" {
-    //     return <http:Forbidden>{ body: { status: "error", message: "Access denied" } };
-    // }
-
-    mongodb:Database|error dbResult = mongoClient->getDatabase(databaseName);
-    if dbResult is error {
-        return <http:InternalServerError>{ body: { status: "error", message: "Database error" } };
-    }
-    mongodb:Database database = dbResult;
-
-    mongodb:Collection|error colResult = database->getCollection(collectionName_users);
-    if colResult is error {
-        return <http:InternalServerError>{ body: { status: "error", message: "Collection error" } };
-    }
-    mongodb:Collection collection = colResult;
-
-    map<json> filter = { "role": "admin", "accepted": false };
-    stream<models:User, error?> userStream = check collection->find(filter, {}, (), models:User);
-
-    models:User[] users = check from models:User u in userStream select u;
-
-    // Convert User[] to json[]
-    json[] usersJson = from models:User u in users
-                       select {
-                           _id: u._id,
-                           name: u.name,
-                           email: u.email,
-                           role: u.role,
-                           accepted: u.accepted,
-                           createdAt: u.createdAt,
-                           updatedAt: u.updatedAt
-                       };
-
-    return <json>{ users: usersJson };
-}
 
 
 
@@ -474,8 +382,9 @@ return <json>{
 
 
     // ================= SHOPS (Public) =================
-    resource function get [int id]/shops() returns json|error {
+   resource function get [int id]/shops() returns json|error {
         string mallId = "M" + id.toString();
+
         models:MallDoc? mallDocOptional = check getMallByMallId(mallId, mongoClient);
 
         if mallDocOptional is models:MallDoc {
@@ -496,8 +405,13 @@ return <json>{
             return {shops: shopsJson};
         }
 
-        return {status: "error", message: "Mall not found for id " + id.toString()};
+        return {
+            status: "error",
+            message: "Mall not found for id " + id.toString()
+        };
     }
+
+
 
     // ================= ORDERS =================
 
@@ -574,15 +488,15 @@ return <json>{
     }
 
     // Get one order by ID
-    resource function get orders/[string orderId](@http:Header string? authorization)
-            returns json|http:Unauthorized|http:NotFound|http:InternalServerError {
-        // Will return  one order by orderId
-    }
+    // resource function get orders/[string orderId](@http:Header string? authorization)
+    //         returns json|http:Unauthorized|http:NotFound|http:InternalServerError {
+    //     // Will return  one order by orderId
+    // }
 
 
        
-        return { status: "error", message: "Mall not found for id " + id.toString() };
-    }
+    //     return { status: "error", message: "Mall not found for id " + id.toString() };
+    // }
 
 
 
@@ -678,16 +592,25 @@ function getMallByMallId(string id, mongodb:Client mongoClient) returns models:M
     mongodb:Database database = check mongoClient->getDatabase(databaseName);
     mongodb:Collection collection = check database->getCollection(collectionName_shops);
 
-    map<json> query = {"mallId": id};
+    // Ensure mallId is correct
+    string mallId = id.startsWith("M") ? id : "M" + id;
+    io:println("Searching mallId: ", mallId);
+
+    map<json> query = { "mallId": mallId };
+
+    // Use typedesc safely
     stream<models:MallDoc, error?> mallStream = check collection->find(query, {}, (), models:MallDoc);
+    io:println("Malls found: ", mallStream);
 
     models:MallDoc[] malls = check from models:MallDoc mall in mallStream
         select mall;
+
     if malls.length() > 0 {
         return malls[0];
     }
     return error("Mall not found");
 }
+
 
 // ================= AUTH HELPERS =================
 function getUserFromAuthHeader(string? authorization)
@@ -720,23 +643,7 @@ function getUserFromAuthHeader(string? authorization)
 
 
 
-// ================= AUTH HELPERS =================
-function getUserFromAuthHeader(string? authorization) 
-    returns models:UserInfo|http:Unauthorized {
-    
-    if authorization is () {
-        return <http:Unauthorized>{ body: { status: "error", message: "Authorization header required" } };
-    }
 
-    string token = authorization.substring(7);
-    models:UserInfo? userInfo = activeSessions[token];
-
-    if userInfo is () {
-        return <http:Unauthorized>{ body: { status: "error", message: "Invalid or expired token" } };
-    }
-
-    return userInfo;
-}
 
 
 
@@ -799,6 +706,6 @@ function approveAdmin(string userId) returns mongodb:UpdateResult|error {
 
 }
 
-}
+
 
 

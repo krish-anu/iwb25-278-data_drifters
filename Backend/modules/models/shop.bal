@@ -14,7 +14,7 @@ public type Shop record {
     string category?;
     float rating?;
     int reviewCount?;
-    string image?;
+    string imageUrl?;
     int discount?;
 
 };
