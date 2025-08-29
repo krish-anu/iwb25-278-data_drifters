@@ -1,15 +1,19 @@
 
+public type Product record {|
+    string id;
+    string name;
+    string category;
+    float price;
+    int quantity;
+    string description?;
+    string imageUrl?;
+    string status?;
+|};
+
+
+
 
 public type ProductResponse record {|
     Product[] products;
 |};
-public type Product record {
-    string id;
-    string? name;
-    string? category;
-    string? description;
-    string? price;
-    string? stockQuantity;
-    string? status;
-    string? imageUrl;
-};
+

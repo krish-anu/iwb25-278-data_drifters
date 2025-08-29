@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import axios from "axios";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -27,8 +28,18 @@ interface Product {
   category: string;
   store: string;
   stock: number;
-  status: "active" | "inactive" | "out_of_stock";
+  status: string;
   image: string;
+}
+
+interface Shop {
+  id: string;
+  name: string;
+  email: string;
+  contactNumber: string;
+  address: string;
+  description: string;
+  products: Product[];
 }
 
 const initialProducts: Product[] = [
