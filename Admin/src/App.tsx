@@ -55,7 +55,7 @@ const App = () => (
             <Route index element={<Dashboard />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="products" element={<Products />} />
-            <Route path="stores" element={<Stores />} />
+            {/* <Route path="stores" element={<Stores />} /> */}
             <Route path="settings" element={<Settings />} />
           </Route>
           <Route path="/superadmin" element={<SuperAdmin />} />

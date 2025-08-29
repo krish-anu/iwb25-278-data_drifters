@@ -5,6 +5,8 @@ public type User record {
     string name;
     string email;
     string password;
+    string role?;
+    boolean accepted?;
     string createdAt?;
     string updatedAt?;
 };
@@ -25,4 +27,11 @@ public type UserInfo record {
     string _id;
     string name;
     string email;
+    string role?;
 };
+
+public type ChangePasswordRequest record {|
+    string currentPassword;
+    string newPassword;
+    string confirmPassword;
+|};

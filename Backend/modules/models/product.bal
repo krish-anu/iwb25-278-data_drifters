@@ -6,6 +6,7 @@ public type Product record {|
     int quantity;
     string description?;
     string imageUrl?;
+    string status?;
 |};
 
 public type ProductResponse record {|

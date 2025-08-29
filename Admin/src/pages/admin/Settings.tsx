@@ -1,12 +1,14 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
+import axios from "axios";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+// import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
 import { 
   User, 
   Lock, 
@@ -30,7 +32,29 @@ const AdminSettings = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [userName, setUserName] = useState("");
+  const [userRole, setUserRole] = useState("");
   const fileInputRef = useRef(null);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const res = await axios.get("http://localhost:9090/admin/profile", {
+          headers: {
+            "Authorization": `Bearer ${localStorage.getItem("token")}`
+          }
+        });
+        if (res.data.status === "success") {
+          setUserName(res.data.name);
+          setUserRole(res.data.role);
+        }
+      } catch (err) {
+        console.error("Error fetching profile", err);
+      }
+    };
+    fetchProfile();
+  }, []);
   
   const [adminProfile, setAdminProfile] = useState({
     id: 1,
@@ -112,18 +136,58 @@ const AdminSettings = () => {
     alert("Profile updated successfully!");
   };
 
-  const handlePasswordChange = () => {
-    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      alert("New passwords don't match!");
-      return;
+  const handlePasswordChange = async () => {
+    try {
+      const res = await fetch("http://localhost:9090/admin/changePassword", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify(passwordForm),
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.status === "success") {
+        // Clear the form fields
+        setPasswordForm({
+          currentPassword: "",
+          newPassword: "",
+          confirmPassword: ""
+        });
+
+        // Show success toast
+        toast({
+          title: "Password Changed Successfully",
+          description: "Your password has been updated. Please use your new password for future logins.",
+        });
+
+        // Optional: Redirect to login page after a short delay
+        // Uncomment the lines below if you want to force re-login after password change
+        /*
+        setTimeout(() => {
+          localStorage.removeItem("token");
+          window.location.href = "/";
+        }, 2000);
+        */
+
+      } else {
+        toast({
+          title: "Password Change Failed",
+          description: data.message || "Failed to change password. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (err) {
+      toast({
+        title: "Network Error",
+        description: "Unable to connect to the server. Please check your connection and try again.",
+        variant: "destructive",
+      });
     }
-    if (passwordForm.newPassword.length < 8) {
-      alert("Password must be at least 8 characters long!");
-      return;
-    }
-    alert("Password changed successfully!");
-    setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
   };
+
 
   const handleSystemSettingsUpdate = () => {
     alert("System settings updated successfully!");
@@ -146,35 +210,35 @@ const AdminSettings = () => {
   const tabs = [
     { id: "profile", label: "Profile", icon: User },
     { id: "password", label: "Password", icon: Lock },
-    { id: "notifications", label: "Notifications", icon: Bell },
+    // { id: "notifications", label: "Notifications", icon: Bell },
     { id: "system", label: "System", icon: Settings },
-    { id: "security", label: "Security", icon: Shield },
+    // { id: "security", label: "Security", icon: Shield },
     { id: "data", label: "Data Management", icon: Database }
   ];
 
-  const languages = [
-    { value: "en", label: "English" },
-    { value: "es", label: "Spanish" },
-    { value: "fr", label: "French" },
-    { value: "de", label: "German" },
-    { value: "zh", label: "Chinese" }
-  ];
+  // const languages = [
+  //   { value: "en", label: "English" },
+  //   { value: "es", label: "Spanish" },
+  //   { value: "fr", label: "French" },
+  //   { value: "de", label: "German" },
+  //   { value: "zh", label: "Chinese" }
+  // ];
 
-  const timezones = [
-    { value: "America/New_York", label: "Eastern Time (ET)" },
-    { value: "America/Chicago", label: "Central Time (CT)" },
-    { value: "America/Denver", label: "Mountain Time (MT)" },
-    { value: "America/Los_Angeles", label: "Pacific Time (PT)" },
-    { value: "UTC", label: "UTC" }
-  ];
+  // const timezones = [
+  //   { value: "America/New_York", label: "Eastern Time (ET)" },
+  //   { value: "America/Chicago", label: "Central Time (CT)" },
+  //   { value: "America/Denver", label: "Mountain Time (MT)" },
+  //   { value: "America/Los_Angeles", label: "Pacific Time (PT)" },
+  //   { value: "UTC", label: "UTC" }
+  // ];
 
-  const currencies = [
-    { value: "USD", label: "US Dollar ($)" },
-    { value: "EUR", label: "Euro (€)" },
-    { value: "GBP", label: "British Pound (£)" },
-    { value: "JPY", label: "Japanese Yen (¥)" },
-    { value: "CAD", label: "Canadian Dollar (C$)" }
-  ];
+  // const currencies = [
+  //   { value: "USD", label: "US Dollar ($)" },
+  //   { value: "EUR", label: "Euro (€)" },
+  //   { value: "GBP", label: "British Pound (£)" },
+  //   { value: "JPY", label: "Japanese Yen (¥)" },
+  //   { value: "CAD", label: "Canadian Dollar (C$)" }
+  // ];
 
   return (
     <div className="space-y-6">
@@ -189,14 +253,23 @@ const AdminSettings = () => {
 
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-4">
+          <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Name</CardTitle>
+            {/* <Building className="h-4 w-4 text-muted-foreground" /> */}
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{userName}</div>
+          </CardContent>
+        </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Admin Level</CardTitle>
             <Shield className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">Super Admin</div>
-            <Badge className="bg-green-500 mt-2">Full Access</Badge>
+            <div className="text-2xl font-bold">{userRole}</div>
+            <Badge className="bg-green-500 mt-2">Limited Access</Badge>
           </CardContent>
         </Card>
         
@@ -219,17 +292,6 @@ const AdminSettings = () => {
           <CardContent>
             <div className="text-2xl font-bold">Today</div>
             <p className="text-xs text-muted-foreground">08:30 AM</p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">System Status</CardTitle>
-            <Building className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">Online</div>
-            <Badge className="bg-green-500 mt-2">All Systems Operational</Badge>
           </CardContent>
         </Card>
       </div>
@@ -492,7 +554,7 @@ const AdminSettings = () => {
                 <CardDescription>Configure system-wide settings and preferences.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="gap-4">
                   <div>
                     <Label htmlFor="siteName">Site Name</Label>
                     <Input
@@ -501,7 +563,7 @@ const AdminSettings = () => {
                       onChange={(e) => setSystemSettings({...systemSettings, siteName: e.target.value})}
                     />
                   </div>
-                  <div>
+                  {/* <div>
                     <Label htmlFor="language">Language</Label>
                     <Select value={systemSettings.language} onValueChange={(value) => setSystemSettings({...systemSettings, language: value})}>
                       <SelectTrigger>
@@ -513,7 +575,7 @@ const AdminSettings = () => {
                         ))}
                       </SelectContent>
                     </Select>
-                  </div>
+                  </div> */}
                 </div>
                 
                 <Button onClick={handleSystemSettingsUpdate}>
