@@ -70,14 +70,14 @@ const Dashboard = () => {
       change: "+8.1%",
       icon: Users,
       description: "This month"
-    },
-    {
-      title: "Conversion Rate",
-      value: "3.2%",
-      change: "+0.4%",
-      icon: TrendingUp,
-      description: "Sales to visitors"
     }
+    // {
+    //   title: "Conversion Rate",
+    //   value: "3.2%",
+    //   change: "+0.4%",
+    //   icon: TrendingUp,
+    //   description: "Sales to visitors"
+    // }
   ];
 
   return (
@@ -90,7 +90,7 @@ const Dashboard = () => {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {stats.map((stat) => (
           <Card key={stat.title}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -108,9 +108,9 @@ const Dashboard = () => {
       </div>
 
       {/* Charts Section */}
-      <div className="grid gap-6 md:grid-cols-2">
+      {/* <div className="grid gap-6 md:grid-cols-2"> */}
         {/* Sales Chart */}
-        <Card>
+        {/* <Card>
           <CardHeader>
             <CardTitle>Monthly Sales Performance</CardTitle>
             <CardDescription>
@@ -121,11 +121,11 @@ const Dashboard = () => {
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={salesData}>
                 <defs>
-                  <linearGradient id="orangeGradient" x1="0" y1="0" x2="1" y2="0">
-                    <stop offset="0%" stopColor="#fb923c" />  {/* orange-400 */}
-                    <stop offset="50%" stopColor="#f97316" /> {/* orange-500 */}
-                    <stop offset="100%" stopColor="#ea580c" />{/* orange-600 */}
-                  </linearGradient>
+                  <linearGradient id="orangeGradient" x1="0" y1="0" x2="1" y2="0"> */}
+                    {/* <stop offset="0%" stopColor="#fb923c" />  orange-400 */}
+                    {/* <stop offset="50%" stopColor="#f97316" /> orange-500 */}
+                    {/* <stop offset="100%" stopColor="#ea580c" />orange-600 */}
+                  {/* </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="month" />
@@ -138,10 +138,10 @@ const Dashboard = () => {
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
-        </Card>
+        </Card> */}
 
         {/* Category Distribution */}
-        <Card>
+        {/* <Card>
           <CardHeader>
             <CardTitle>Sales by Category</CardTitle>
             <CardDescription>
@@ -168,7 +168,7 @@ const Dashboard = () => {
             </ResponsiveContainer>
           </CardContent>
         </Card>
-      </div>
+      </div> */}
 
       {/* Top Products Table */}
       <Card>
