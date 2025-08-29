@@ -14,10 +14,9 @@ import mallMapIcon from "@/assets/mall-map-logo-black.png";
 import { cn } from "@/lib/utils";
 
 const navigation = [
-  { name: "Dashboard", href: "/admin/dashboard", icon: BarChart3 },
-  { name: "Products", href: "/admin/products", icon: Package },
-  { name: "Stores", href: "/admin/stores", icon: Store },
-  { name: "Settings", href: "/admin/settings", icon: Settings },
+  { name: "Dashboard", href: "/superadmin/dashboard", icon: BarChart3 },
+  { name: "Stores", href: "/superadmin/stores", icon: Store },
+  { name: "Settings", href: "/superadmin/settings", icon: Settings },
 ];
 
 const SuperAdmin = () => {

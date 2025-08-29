@@ -33,7 +33,6 @@ import {LogInForm} from './pages/AuthPage/login-form'
 import SignUp from './pages/AuthPage/Signup'
 import SuperAdmin from './pages/SuperAdmin/SuperAdmin'
 import SuperAdminDashboard from './pages/SuperAdmin/dashboard'
-import SuperAdminProduct from './pages/SuperAdmin/product'
 import SuperAdminSettings from './pages/SuperAdmin/settings'
 import SuperAdminStores from './pages/SuperAdmin/stores'
 import NotFound from "./pages/NotFound";
@@ -65,7 +64,6 @@ const App = () => (
           <Route path="/superadmin" element={<SuperAdmin/>}>
             <Route index element={<SuperAdminDashboard/>} />
             <Route path="dashboard" element={<SuperAdminDashboard/>} />
-            <Route path="products" element={<SuperAdminProduct/>} />
             <Route path="stores" element={<SuperAdminStores/>} />
             <Route path="settings" element={<SuperAdminSettings/>} />
           </Route>
