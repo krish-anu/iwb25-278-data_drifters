@@ -2,18 +2,19 @@ public type OrderItem record {|
     string productId;
     int quantity;
     float price;
-    float lineTotal?;
+    float lineTotal;
 |};
 
 public type Order record {|
-    string _id?;
-    string orderId?;
+    json _id?;
+    string orderId;
     string shopId;
     string mallId;
-    string customerName?;
-    string date?;
+    string customerName;
+    string date;
     OrderItem[] items;
-    float totalPrice?;
+    float totalPrice;
+    string status; // "pending" for cart orders, "confirmed" for placed orders
 |};
 
 public type OrderCreateResponse record {|

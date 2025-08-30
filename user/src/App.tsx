@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import { ShopPage } from "./pages/shop-page";
 import { CartPage } from "./pages/cart-page";
+import MallPage from "./pages/MallPage";
 
 const queryClient = new QueryClient();
 
@@ -18,6 +19,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/mall/:mallId" element={<MallPage />} />
           <Route path="/shop-page" element={<ShopPage />} />
           <Route path="/cart" element={<CartPage />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
