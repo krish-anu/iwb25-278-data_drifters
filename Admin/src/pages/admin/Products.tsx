@@ -142,9 +142,22 @@ const Products = () => {
     const fetchProducts = async () => {
       try {
         setLoading(true);
-        const res = await axios.get(`http://localhost:9090/${shopId}/products`);
-        setProducts(res.data.products);
-        setShopName(res.data.shopName);
+        // Use the admin endpoint to get products directly
+        const res = await axios.get(`http://localhost:9090/admin/${shopId}/products`);
+        const responseData = res.data;
+
+        // Handle different response structures
+        if (Array.isArray(responseData)) {
+          setProducts(responseData);
+        } else if (responseData.products && Array.isArray(responseData.products)) {
+          setProducts(responseData.products);
+        } else {
+          console.warn("Unexpected response structure:", responseData);
+          setProducts([]);
+        }
+
+        // For shop name, we might need to fetch it separately or use a default
+        setShopName("Mall Store"); // Default shop name
       } catch (err: any) {
         setError(err.message || "Failed to fetch products");
       } finally {
@@ -158,66 +171,159 @@ const Products = () => {
   if (loading) return <p>Loading products…</p>;
   if (error) return <p className="text-red-600">{error}</p>;
 
-const handleAddProduct = () => {
-  // Filter products belonging to the same shop
-  const shopProducts = products.filter(
-    (p) => p.store === formData.store
-  );
+const handleAddProduct = async () => {
+  try {
+    // Step 1: Get shopId (like "M1-S1")
+    const shopId = "M1-S1"; // Use the hardcoded shopId from the component
 
-  // Get the last product number (P number)
-  let newProductNumber = 1; // default for first product in the shop
+    // Step 2: Fetch existing products for this shop
+    const res = await fetch(`http://localhost:9090/admin/${shopId}/products`);
+    if (!res.ok) throw new Error("Failed to fetch products");
+    const responseData = await res.json();
 
-  if (shopProducts.length > 0) {
-    const lastIds = shopProducts.map((p) => {
-      // Extract number after "P"
-      const match = p.id.match(/P(\d+)/);
-      return match ? parseInt(match[1], 10) : 0;
-    });
+    // Handle different response structures
+    let existingProducts: { id: string }[] = [];
+    if (Array.isArray(responseData)) {
+      existingProducts = responseData;
+    } else if (responseData.products && Array.isArray(responseData.products)) {
+      existingProducts = responseData.products;
+    } else {
+      console.warn("Unexpected response structure:", responseData);
+      existingProducts = [];
+    }
 
-    newProductNumber = Math.max(...lastIds) + 1;
+    // Step 3: Find the max product number (Pn)
+    let maxNum = 0;
+    if (Array.isArray(existingProducts) && existingProducts.length > 0) {
+      existingProducts.forEach(p => {
+        if (p && p.id) {
+          const match = p.id.match(/P(\d+)/); // extract number after P
+          if (match) {
+            const num = parseInt(match[1], 10);
+            if (num > maxNum) maxNum = num;
+          }
+        }
+      });
+    }
+
+    // Step 4: Create new ID
+    const newProductId = `S1-P${maxNum + 1}`;
+
+    // Step 5: Build product payload matching backend Product model
+    const newProduct = {
+      id: newProductId,
+      productName: formData.productName,
+      description: formData.description,
+      price: parseFloat(formData.price || "0"),
+      category: formData.category,
+      store: shopId,
+      stockQuantity: parseInt(formData.stockQuantity || "0", 10),
+      status: formData.status || "Active",
+      imageUrl: formData.imageUrl || "https://images.unsplash.com/photo-1560472355-536de3962603?w=400&h=300&fit=crop"
+    };
+
+    // Step 6: Send to backend
+    const response = await fetch(
+      `http://localhost:9090/shops/${shopId}/products`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newProduct),
+      }
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || "Failed to add product");
+    }
+    
+    const result = await response.json();
+    console.log("Product added successfully:", result);
+
+    // Step 7: Refresh the products list
+    const updatedRes = await fetch(`http://localhost:9090/admin/${shopId}/products`);
+    if (updatedRes.ok) {
+      const updatedData = await updatedRes.json();
+
+      // Handle different response structures
+      if (Array.isArray(updatedData)) {
+        setProducts(updatedData);
+      } else if (updatedData.products && Array.isArray(updatedData.products)) {
+        setProducts(updatedData.products);
+      } else {
+        console.warn("Unexpected response structure for refresh:", updatedData);
+      }
+    }
+    
+    setFormData({});
+    setIsAddDialogOpen(false);
+    alert("Product added successfully!");
+  } catch (error) {
+    console.error("Error adding product:", error);
+    alert(`Error: ${error instanceof Error ? error.message : 'Something went wrong while adding the product.'}`);
   }
-
-  // Create new product ID
-  const newProductId = `S1-P${newProductNumber}`;
-
-  const newProduct: Product = {
-    id: newProductId,
-    productName: formData.productName || "",
-    description: formData.description || "",
-    price: formData.price || "0",
-    category: formData.category || "",
-    store: formData.store || "",
-    stockQuantity: formData.stockQuantity || "0",
-    status: formData.status || "Active",
-    imageUrl:
-      formData.imageUrl ||
-      "https://images.unsplash.com/photo-1560472355-536de3962603?w=400&h=300&fit=crop",
-  };
-
-  setProducts([...products, newProduct]);
-  setFormData({});
-  setIsAddDialogOpen(false);
 };
 
-  const handleEditProduct = () => {
+  const handleEditProduct = async () => {
     if (!editingProduct) return;
-    
-    const updatedProduct: Product = {
-      ...editingProduct,
-      productName: formData.productName || editingProduct.productName,
-      description: formData.description || editingProduct.description,
-      price: formData.price !== undefined ? formData.price : editingProduct.price,
-      category: formData.category || editingProduct.category,
-      store: formData.store || editingProduct.store,
-      stockQuantity: formData.stockQuantity !== undefined ? formData.stockQuantity : editingProduct.stockQuantity,
-      status: formData.status || editingProduct.status,
-      image: formData.imageUrl || editingProduct.imageUrl,
-    };
-    
-    setProducts(products.map(product => product.id === editingProduct.id ? updatedProduct : product));
-    setFormData({});
-    setEditingProduct(null);
-    setIsEditDialogOpen(false);
+
+    try {
+      const shopId = "M1-S1"; // Use the same shopId as in add
+
+      // Build updated product payload matching backend Product model
+      const updatedProduct = {
+        id: editingProduct.id,
+        productName: formData.productName || editingProduct.productName,
+        description: formData.description || editingProduct.description,
+        price: parseFloat(formData.price || editingProduct.price.toString()),
+        category: formData.category || editingProduct.category,
+        store: shopId,
+        stockQuantity: parseInt(formData.stockQuantity || editingProduct.stockQuantity.toString(), 10),
+        status: formData.status || editingProduct.status,
+        imageUrl: formData.imageUrl || editingProduct.imageUrl
+      };
+
+      // Send to backend
+      const response = await fetch(
+        `http://localhost:9090/shops/${shopId}/products/${editingProduct.id}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(updatedProduct),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to update product");
+      }
+
+      const result = await response.json();
+      console.log("Product updated successfully:", result);
+
+      // Refresh the products list
+      const updatedRes = await fetch(`http://localhost:9090/admin/${shopId}/products`);
+      if (updatedRes.ok) {
+        const updatedData = await updatedRes.json();
+
+        // Handle different response structures
+        if (Array.isArray(updatedData)) {
+          setProducts(updatedData);
+        } else if (updatedData.products && Array.isArray(updatedData.products)) {
+          setProducts(updatedData.products);
+        } else {
+          console.warn("Unexpected response structure for refresh:", updatedData);
+        }
+      }
+
+      setFormData({});
+      setEditingProduct(null);
+      setIsEditDialogOpen(false);
+      alert("Product updated successfully!");
+    } catch (error) {
+      console.error("Error updating product:", error);
+      alert(`Error: ${error instanceof Error ? error.message : 'Something went wrong while updating the product.'}`);
+    }
   };
 
   const openEditDialog = (product: Product) => {
@@ -438,7 +544,7 @@ const handleAddProduct = () => {
                   type="number"
                   step="0.01"
                   value={formData.price || ""}
-                  onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) })}
+                  onChange={(e) => setFormData({ ...formData, price: e.target.value })}
                   required
                 />
               </div>
@@ -471,7 +577,7 @@ const handleAddProduct = () => {
                   }
                 }}
               />
-              {formData.image && (
+              {formData.imageUrl && (
                 <div className="mt-2">
                   <img 
                     src={formData.imageUrl} 
@@ -589,7 +695,7 @@ const handleAddProduct = () => {
         
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Out of stockQuantity</CardTitle>
+            <CardTitle className="text-sm font-medium">Out of Stock</CardTitle>
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -761,7 +867,7 @@ const handleAddProduct = () => {
                   <h4 className="font-medium">Product Information</h4>
                   <div className="mt-2 space-y-2 text-sm">
                     <p><span className="text-muted-foreground">Category:</span> {selectedProduct.category}</p>
-                    <p><span className="text-muted-foreground">Store:</span> {selectedProduct.store}</p>
+                    <p><span className="text-muted-foreground">Store:</span> {shopName}</p>
                     <p><span className="text-muted-foreground">Price:</span> ${selectedProduct.price}</p>
                     <p><span className="text-muted-foreground">Status:</span> {getStatusBadge(selectedProduct.status)}</p>
                   </div>
@@ -769,8 +875,8 @@ const handleAddProduct = () => {
                 <div>
                   <h4 className="font-medium">Inventory Details</h4>
                   <div className="mt-2 space-y-2 text-sm">
-                    <p><span className="text-muted-foreground">stockQuantity:</span> {selectedProduct.stockQuantity} units</p>
-                    <p><span className="text-muted-foreground">Total Value:</span> ${(selectedProduct.price * selectedProduct.stockQuantity).toLocaleString()}</p>
+                    <p><span className="text-muted-foreground">Quantity:</span> {selectedProduct.stockQuantity} units</p>
+                    <p><span className="text-muted-foreground">Total Value:</span> ${(parseFloat(selectedProduct.price) * parseInt(selectedProduct.stockQuantity)).toLocaleString()}</p>
                   </div>
                 </div>
               </div>
@@ -783,12 +889,12 @@ const handleAddProduct = () => {
               <div className="grid grid-cols-2 gap-4">
                 <Card>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm">stockQuantity Level</CardTitle>
+                    <CardTitle className="text-sm">Quantity Level</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">{selectedProduct.stockQuantity}</div>
                     <p className="text-xs text-muted-foreground">
-                      {selectedProduct.stockQuantity <= 10 ? "Low stockQuantity" : "Good stockQuantity"}
+                      {parseInt(selectedProduct.stockQuantity) <= 10 ? "Low Quantity" : "Good Quantity"}
                     </p>
                   </CardContent>
                 </Card>
@@ -797,7 +903,7 @@ const handleAddProduct = () => {
                     <CardTitle className="text-sm">Value</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">${(selectedProduct.price * selectedProduct.stockQuantity).toLocaleString()}</div>
+                    <div className="text-2xl font-bold">${(parseFloat(selectedProduct.price) * parseInt(selectedProduct.stockQuantity)).toLocaleString()}</div>
                     <p className="text-xs text-muted-foreground">Total inventory value</p>
                   </CardContent>
                 </Card>

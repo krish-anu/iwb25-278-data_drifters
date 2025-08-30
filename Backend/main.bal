@@ -38,6 +38,11 @@ const string ROLE_ADMIN = "admin";
 const string ROLE_SELLER = "seller";
 const string ROLE_CUSTOMER = "customer";
 
+// Loose document type for flexible parsing
+type LooseDoc record {|
+    json...;
+|};
+
 // CORS configuration
 
 @http:ServiceConfig {
@@ -330,7 +335,7 @@ service / on new http:Listener(9090) {
 
         // Aggregation pipeline
             map<json>[] pipeline = [
-                { "$match": { "shops.id": shopId } },
+                { "$match": { "shops.id": shopId, "shops": { "$type": "array" } } },
                 { "$unwind": "$shops" },
                 { "$match": { "shops.id": shopId } },
                 {
@@ -560,7 +565,237 @@ service / on new http:Listener(9090) {
         };
     }
 
+// ================= ADD PRODUCTS =================
+    resource function post shops/[string shopId]/products(@http:Payload json newProduct)
+            returns json|http:NotFound|http:InternalServerError|error {
 
+        // Connect to database and collection
+        mongodb:Database database = check mongoClient->getDatabase(databaseName);
+        io:print("OOPS!");
+        mongodb:Collection mallCollection = check database->getCollection(collectionName_shops);
+
+        // First check if the shop exists
+        map<json> shopFilter = { "shops.id": shopId };
+        var shopDocResult = mallCollection->findOne(shopFilter, {}, (), LooseDoc);
+        if shopDocResult is error {
+            return <http:InternalServerError>{
+                body: { status: "error", message: "Error fetching shop data" }
+            };
+        }
+
+        if shopDocResult is () {
+            return <http:NotFound>{
+                body: { status: "error", message: "Shop not found: " + shopId }
+            };
+        }
+
+        LooseDoc shopDoc = <LooseDoc>shopDocResult;
+        json shopsJson = shopDoc["shops"];
+        if !(shopsJson is json[]) {
+            return <http:InternalServerError>{
+                body: { status: "error", message: "Invalid shop structure" }
+            };
+        }
+
+        json[] shops = <json[]>shopsJson;
+        json? shopJson = ();
+        foreach json s in shops {
+            if s is map<json> && s["id"] == shopId {
+                shopJson = s;
+                break;
+            }
+        }
+
+        if shopJson is () {
+            return <http:NotFound>{
+                body: { status: "error", message: "Shop not found: " + shopId }
+            };
+        }
+
+        map<json> shop = <map<json>>shopJson;
+        json productsJson = shop["products"];
+        json[] currentProducts = [];
+        if productsJson is json[] {
+            currentProducts = <json[]>productsJson;
+        } else if productsJson is map<json> {
+            currentProducts = [productsJson];
+        } else {
+            currentProducts = [];
+        }
+
+        currentProducts.push(newProduct);
+
+        // Update query: set the products array
+        mongodb:Update updateQuery = {
+            set: {
+                "shops.$.products": currentProducts
+            }
+        };
+
+        map<json> filter = { "shops.id": shopId };
+
+        mongodb:UpdateResult result = check mallCollection->updateOne(filter, updateQuery);
+
+        if result.matchedCount == 0 {
+            return <http:NotFound>{
+                body: { status: "error", message: "Shop not found: " + shopId }
+            };
+        }
+
+        if result.modifiedCount == 0 {
+            return <http:InternalServerError>{
+                body: { status: "error", message: "Failed to add product" }
+            };
+        }
+
+        return {
+            status: "success",
+            message: "Product added successfully",
+            product: newProduct
+        };
+    }
+
+    // ================= EDIT PRODUCTS =================
+    resource function put shops/[string shopId]/products/[string productId](@http:Payload json updatedProduct)
+            returns json|http:NotFound|http:InternalServerError|error {
+
+        // Connect to database and collection
+        mongodb:Database database = check mongoClient->getDatabase(databaseName);
+        mongodb:Collection mallCollection = check database->getCollection(collectionName_shops);
+
+        // First check if the shop exists
+        map<json> shopFilter = { "shops.id": shopId };
+        var shopDocResult = mallCollection->findOne(shopFilter, {}, (), LooseDoc);
+        if shopDocResult is error {
+            return <http:InternalServerError>{
+                body: { status: "error", message: "Error fetching shop data" }
+            };
+        }
+
+        if shopDocResult is () {
+            return <http:NotFound>{
+                body: { status: "error", message: "Shop not found: " + shopId }
+            };
+        }
+
+        LooseDoc shopDoc = <LooseDoc>shopDocResult;
+        json shopsJson = shopDoc["shops"];
+        if !(shopsJson is json[]) {
+            return <http:InternalServerError>{
+                body: { status: "error", message: "Invalid shop structure" }
+            };
+        }
+
+        json[] shops = <json[]>shopsJson;
+        json? shopJson = ();
+        foreach json s in shops {
+            if s is map<json> && s["id"] == shopId {
+                shopJson = s;
+                break;
+            }
+        }
+
+        if shopJson is () {
+            return <http:NotFound>{
+                body: { status: "error", message: "Shop not found: " + shopId }
+            };
+        }
+
+        map<json> shop = <map<json>>shopJson;
+        json productsJson = shop["products"];
+        json[] currentProducts = [];
+        if productsJson is json[] {
+            currentProducts = <json[]>productsJson;
+        } else if productsJson is map<json> {
+            currentProducts = [productsJson];
+        } else {
+            currentProducts = [];
+        }
+
+        // Find and update the product
+        boolean productFound = false;
+        foreach int i in 0 ..< currentProducts.length() {
+            if currentProducts[i] is map<json> {
+                map<json> prod = <map<json>>currentProducts[i];
+                if prod["id"] == productId {
+                    currentProducts[i] = updatedProduct;
+                    productFound = true;
+                    break;
+                }
+            }
+        }
+
+        if !productFound {
+            return <http:NotFound>{
+                body: { status: "error", message: "Product not found: " + productId }
+            };
+        }
+
+        // Update query: set the products array
+        mongodb:Update updateQuery = {
+            set: {
+                "shops.$.products": currentProducts
+            }
+        };
+
+        map<json> filter = { "shops.id": shopId };
+
+        mongodb:UpdateResult result = check mallCollection->updateOne(filter, updateQuery);
+
+        if result.matchedCount == 0 {
+            return <http:InternalServerError>{
+                body: { status: "error", message: "Failed to update product" }
+            };
+        }
+
+        return {
+            status: "success",
+            message: "Product updated successfully",
+            product: updatedProduct
+        };
+    }
+
+    // Also add the admin endpoint for fetching products
+    resource function get admin/[string shopId]/products() returns json|http:NotFound|http:InternalServerError|error {
+        // Connect to database and collection
+        mongodb:Database database = check mongoClient->getDatabase(databaseName);
+        mongodb:Collection mallCollection = check database->getCollection(collectionName_shops);
+
+        // Aggregation pipeline
+        map<json>[] pipeline = [
+            { "$match": { "shops.id": shopId, "shops": { "$type": "array" } } },
+            { "$unwind": "$shops" },
+            { "$match": { "shops.id": shopId } },
+            {
+                "$project": {
+                "_id": 0,
+                "products": "$shops.products",
+                "shopId": "$shops.id",
+                "shopName": "$shops.name",
+                "mallId": "$mallId",
+                "mallName": "$mallName"
+                }
+            }
+        ];
+
+        // Run aggregation
+        stream<json, error?> results = check mallCollection->aggregate(pipeline, json);
+        // Convert stream to array
+        json[] documents = check from var doc in results select doc;
+
+        // Check if we got any documents
+        if documents.length() == 0 {
+            return <http:NotFound>{
+                body: { status: "error", message: "Shop not found: " + shopId }
+            };
+        }
+
+        // Cast the first document to map<json> to access its fields
+        map<json> firstDoc = <map<json>>documents[0];
+
+        // Return products with just the products array for the admin endpoint
+        return firstDoc["products"];
+    }
 }
 
 // ================= HELPER FUNCTIONS =================
