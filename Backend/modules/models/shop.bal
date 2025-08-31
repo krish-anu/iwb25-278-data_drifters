@@ -1,6 +1,5 @@
 // Define the product and shop records
 
-
 public type Shop record {
     string id;
 
@@ -9,7 +8,7 @@ public type Shop record {
     string ownerName;
     string contactNumber;
     string description;
-    Product[] products;
+    json[] products;
     string email;
     string category?;
     float rating?;

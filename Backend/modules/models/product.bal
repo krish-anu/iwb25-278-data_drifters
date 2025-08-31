@@ -1,13 +1,14 @@
 
 public type Product record {|
     string id;
-    string name;
+    string productName;
     string category;
     float price;
-    int quantity;
+    int stockQuantity;
     string description?;
     string imageUrl?;
     string status?;
+    string store?;
 |};
 
 
