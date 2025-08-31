@@ -5,6 +5,7 @@ import Backend.utils as Utils;
 import ballerinax/azure_storage_service.blobs as azure_blobs;
 import ballerina/io;
 import ballerina/http;
+// import ballerina/log;
 import ballerina/time;
 import ballerina/uuid;
 import ballerinax/mongodb;
@@ -236,17 +237,14 @@ service / on new http:Listener(9090) {
 
         string token = Utils:generateToken(userResult);
 
-        models:UserInfo userInfo = {
+      models:UserInfo userInfo = {
+    _id: userResult?._id ?: "",
+    name: userResult.name,          // no fallback needed
+    email: userResult.email,        // no fallback needed
+    role: userResult?.role ?: ROLE_CUSTOMER,
+    accepted: userResult?.accepted ?: true
+};
 
-            _id: userResult._id ?: "",
-
-            name: userResult.name,
-            email: userResult.email,
-            role: userResult.role ?: ROLE_CUSTOMER,
-            accepted: userResult.accepted ?: true
-            role: userResult.role ?: ROLE_CUSTOMER,
-            accepted: userResult.accepted ?: true
-        };
         activeSessions[token] = userInfo;
 
         return {
@@ -311,15 +309,10 @@ service / on new http:Listener(9090) {
             _ = activeSessions.remove(token);
         }
         return {status: "success", message: "Logged out successfully"};
-        return {status: "success", message: "Logged out successfully"};
     }
 
     // Get user profile (protected route)
-    resource function get auth/profile(@http:Header string? authorization)
-    returns models:UserInfo|models:LoginResponse|http:InternalServerError|http:BadRequest|http:Conflict|http:Unauthorized|http:Forbidden {
-
    
-
     // ================= ADMIN APPROVAL =================
 
     resource function put admin/approve/[string userId](@http:Header string? authorization)
@@ -388,80 +381,80 @@ service / on new http:Listener(9090) {
 
 
     // ================= ADMIN APPROVAL =================
-    resource function put admin/approve/[string userId](@http:Header string? authorization)
-            returns http:Ok|http:InternalServerError|http:Unauthorized|http:Forbidden {
-        // Uncomment and implement authorization if needed
-        // models:UserInfo|http:Unauthorized userOrUnauthorized = getUserFromAuthHeader(authorization);
-        // if userOrUnauthorized is http:Unauthorized {
-        //     return userOrUnauthorized;
-        // }
-        // models:UserInfo currentUser = <models:UserInfo>userOrUnauthorized;
-        // if currentUser.role != "super_admin" {
-        //     return <http:Forbidden>{ body: { status: "error", message: "Access denied: Super Admin only" } };
-        // }
+    // resource function put admin/approve/[string userId](@http:Header string? authorization)
+    //         returns http:Ok|http:InternalServerError|http:Unauthorized|http:Forbidden {
+    //     // Uncomment and implement authorization if needed
+    //     // models:UserInfo|http:Unauthorized userOrUnauthorized = getUserFromAuthHeader(authorization);
+    //     // if userOrUnauthorized is http:Unauthorized {
+    //     //     return userOrUnauthorized;
+    //     // }
+    //     // models:UserInfo currentUser = <models:UserInfo>userOrUnauthorized;
+    //     // if currentUser.role != "super_admin" {
+    //     //     return <http:Forbidden>{ body: { status: "error", message: "Access denied: Super Admin only" } };
+    //     // }
 
-        mongodb:UpdateResult|error response = approveAdmin(userId);
-        io:println("response", response);
+    //     mongodb:UpdateResult|error response = approveAdmin(userId);
+    //     io:println("response", response);
 
-        if response is error {
-            io:println("Approve admin error: ", response.message());
-            return <http:InternalServerError>{
-                body: { status: "error", message: response.message() }
-            };
-        }
-        if response.matchedCount == 0 {
-            return <http:InternalServerError>{
-                body: { status: "error", message: "No admin found with that ID" }
-            };
-        }
-        return <http:Ok>{
-            body: { status: "success", message: "Admin approved successfully" }
-        };
-    }
+    //     if response is error {
+    //         io:println("Approve admin error: ", response.message());
+    //         return <http:InternalServerError>{
+    //             body: { status: "error", message: response.message() }
+    //         };
+    //     }
+    //     if response.matchedCount == 0 {
+    //         return <http:InternalServerError>{
+    //             body: { status: "error", message: "No admin found with that ID" }
+    //         };
+    //     }
+    //     return <http:Ok>{
+    //         body: { status: "success", message: "Admin approved successfully" }
+    //     };
+    // }
 
     // ================= PENDING ADMINS =================
-    resource function get users/pendingAdmins(@http:Header string? authorization)
-            returns json|http:Unauthorized|http:Forbidden|http:InternalServerError|error {
-        // models:UserInfo|http:Unauthorized userOrUnauthorized = getUserFromAuthHeader(authorization);
-        // if userOrUnauthorized is http:Unauthorized {
-        //     return userOrUnauthorized;
-        // }
+    // resource function get users/pendingAdmins(@http:Header string? authorization)
+    //         returns json|http:Unauthorized|http:Forbidden|http:InternalServerError|error {
+    //     // models:UserInfo|http:Unauthorized userOrUnauthorized = getUserFromAuthHeader(authorization);
+    //     // if userOrUnauthorized is http:Unauthorized {
+    //     //     return userOrUnauthorized;
+    //     // }
 
-        // models:UserInfo currentUser = <models:UserInfo>userOrUnauthorized;
-        // if currentUser.role != "super_admin" {
-        //     return <http:Forbidden>{ body: { status: "error", message: "Access denied" } };
-        // }
+    //     // models:UserInfo currentUser = <models:UserInfo>userOrUnauthorized;
+    //     // if currentUser.role != "super_admin" {
+    //     //     return <http:Forbidden>{ body: { status: "error", message: "Access denied" } };
+    //     // }
 
-        mongodb:Database|error dbResult = mongoClient->getDatabase(databaseName);
-        if dbResult is error {
-            return <http:InternalServerError>{ body: { status: "error", message: "Database error" } };
-        }
-        mongodb:Database database = dbResult;
+    //     mongodb:Database|error dbResult = mongoClient->getDatabase(databaseName);
+    //     if dbResult is error {
+    //         return <http:InternalServerError>{ body: { status: "error", message: "Database error" } };
+    //     }
+    //     mongodb:Database database = dbResult;
 
-        mongodb:Collection|error colResult = database->getCollection(collectionName_users);
-        if colResult is error {
-            return <http:InternalServerError>{ body: { status: "error", message: "Collection error" } };
-        }
-        mongodb:Collection collection = colResult;
+    //     mongodb:Collection|error colResult = database->getCollection(collectionName_users);
+    //     if colResult is error {
+    //         return <http:InternalServerError>{ body: { status: "error", message: "Collection error" } };
+    //     }
+    //     mongodb:Collection collection = colResult;
 
-        map<json> filter = { "role": "admin", "accepted": false };
-        stream<models:User, error?> userStream = check collection->find(filter, {}, (), models:User);
+    //     map<json> filter = { "role": "admin", "accepted": false };
+    //     stream<models:User, error?> userStream = check collection->find(filter, {}, (), models:User);
 
-        models:User[] users = check from models:User u in userStream select u;
+    //     models:User[] users = check from models:User u in userStream select u;
 
-        json[] usersJson = from models:User u in users
-                           select {
-                               _id: u._id,
-                               name: u.name,
-                               email: u.email,
-                               role: u.role,
-                               accepted: u.accepted,
-                               createdAt: u.createdAt,
-                               updatedAt: u.updatedAt
-                           };
+    //     json[] usersJson = from models:User u in users
+    //                        select {
+    //                            _id: u._id,
+    //                            name: u.name,
+    //                            email: u.email,
+    //                            role: u.role,
+    //                            accepted: u.accepted,
+    //                            createdAt: u.createdAt,
+    //                            updatedAt: u.updatedAt
+    //                        };
 
-        return <json>{ users: usersJson };
-    }
+    //     return <json>{ users: usersJson };
+    // }
 
     // ================= PRODUCTS (Admin & Seller only) =================
     resource function get products(@http:Header string? authorization)
@@ -627,7 +620,7 @@ resource function get images() returns json[]|error {
         }
 
         models:Order orderToInsert = {
-            _id: (),
+            // _id: (),
             orderId: orderId,
             shopId: incoming.shopId,
             mallId: incoming.mallId,
@@ -751,7 +744,6 @@ function getUserFromAuthHeader(string? authorization)
         returns models:UserInfo|http:Unauthorized {
     if authorization is () {
         return <http:Unauthorized>{body: {status: "error", message: "Authorization header required"}};
-        return <http:Unauthorized>{body: {status: "error", message: "Authorization header required"}};
     }
 
     string token = authorization.substring(7);
@@ -766,7 +758,6 @@ function getUserFromAuthHeader(string? authorization)
 
     models:UserInfo? userInfo = activeSessions[token];
     if userInfo is () {
-        return <http:Unauthorized>{body: {status: "error", message: "Invalid or expired token"}};
         return <http:Unauthorized>{body: {status: "error", message: "Invalid or expired token"}};
     }
 

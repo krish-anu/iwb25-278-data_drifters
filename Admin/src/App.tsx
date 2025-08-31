@@ -23,8 +23,9 @@ import "./App.css"
 
 const queryClient = new QueryClient();
 
+
 const App = () => {
-  // const token = localStorage.getItem("token") || "";
+  const token = localStorage.getItem("token") || "";
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -46,7 +47,7 @@ const App = () => {
           </Route>
           <Route path="/superadmin" element={<SuperAdmin />}>
             <Route index element={<Dashboard />} />
-            <Route path="dashboard" element={<SuperAdminDashboard />} />
+            <Route path="dashboard" element={<SuperAdminDashboard token={token}/>} />
             <Route path="stores" element={<SuperAdminStores />} />
           </Route>
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

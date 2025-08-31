@@ -6,11 +6,13 @@ import ballerinax/mongodb;
 
 configurable string collectionName_users = ?;
 configurable string collectionName_orders = ?;
+configurable string collectionName_shops = ?;
+configurable string collectionName_customers = ?;
 
 
 // Set explicit collection names in Config.toml
 
-configurable string collectionName_shops = ?;
+ 
 
 // Small helper to fetch a collection by name (keeps code tidy)
 function getCollection(string collName) returns mongodb:Collection|error {
