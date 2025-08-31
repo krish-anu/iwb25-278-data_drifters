@@ -5,12 +5,11 @@ public type User record {
     string name;
     string email;
     string password;
-
     string role?;
-
     boolean accepted?;
     string createdAt?;
     string updatedAt?;
+   
 };
 
 public type LoginRequest record {
@@ -32,7 +31,6 @@ public type UserInfo record {
 
     string role;
     boolean accepted?;
-
 };
 
 public type ChangePasswordRequest record {|

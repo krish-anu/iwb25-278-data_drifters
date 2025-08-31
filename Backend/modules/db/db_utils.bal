@@ -1,11 +1,15 @@
 import Backend.models as models;
 import Backend.utils as MongoDBUtils;
 
+
 import ballerinax/mongodb;
 
-// Set explicit collection names in Config.toml
 configurable string collectionName_users = ?;
 configurable string collectionName_orders = ?;
+
+
+// Set explicit collection names in Config.toml
+
 configurable string collectionName_shops = ?;
 
 // Small helper to fetch a collection by name (keeps code tidy)
@@ -17,7 +21,10 @@ function getCollection(string collName) returns mongodb:Collection|error {
 // ================= USERS =================
 
 public function findUserByEmail(string email) returns models:User|error {
-    mongodb:Collection collection = check getCollection(collectionName_users);
+
+  mongodb:Database database = check MongoDBUtils:getDatabase(MongoDBUtils:databaseName);
+    mongodb:Collection collection = check database->getCollection(collectionName_users);
+
 
     map<json> filter = {"email": email};
     stream<models:User, error?> userStream = check collection->find(filter, {}, (), models:User);
@@ -31,11 +38,16 @@ public function findUserByEmail(string email) returns models:User|error {
 }
 
 public function insertUser(models:User user) returns error? {
-    mongodb:Collection collection = check getCollection(collectionName_users);
+
+    mongodb:Database database = check MongoDBUtils:getDatabase(MongoDBUtils:databaseName);
+    mongodb:Collection collection = check database->getCollection(collectionName_users);
+
+
     check collection->insertOne(user);
 }
 
 public function insertOrder(models:Order orderObj) returns error? {
+
     mongodb:Collection collection = check getCollection(collectionName_orders);
     check collection->insertOne(orderObj);
     // No insertedId is returned; just return nil on success
@@ -76,3 +88,4 @@ public function findMallByMallId(string mallId) returns models:MallDoc|error {
     }
     return error("Mall not found");
 }
+
