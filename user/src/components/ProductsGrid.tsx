@@ -14,7 +14,7 @@ type Props = {
   searchQuery?: string;
   title?: string;
   onProductClick?: (product: Product) => void;
-  onOrderNow?: (product: Product) => void; // 👈 ADDED
+  onOrderNow?: (product: Product) => void;
 };
 
 const FeaturedProductGrid = ({
@@ -22,7 +22,7 @@ const FeaturedProductGrid = ({
   searchQuery = "",
   title = "Featured",
   onProductClick,
-  onOrderNow, // 👈 ADDED
+  onOrderNow,
 }: Props) => {
   const filteredProducts = searchQuery
     ? products.filter((p) =>

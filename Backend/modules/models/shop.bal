@@ -20,6 +20,7 @@ public type Shop record {
 
 // Define the MallDoc record to match your MongoDB collection
 public type MallDoc record {
+    json _id?;
     string mallId;
     string mallName;
     string address;

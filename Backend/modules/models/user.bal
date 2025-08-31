@@ -1,7 +1,7 @@
 // import ballerina/time;
 
 public type User record {
-    string _id?;
+    json _id?;
     string name;
     string email;
     string password;
@@ -29,7 +29,6 @@ public type UserInfo record {
     string _id;
     string name;
     string email;
-
 
     string role;
     boolean accepted?;
