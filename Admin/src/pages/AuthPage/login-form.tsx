@@ -21,6 +21,7 @@ export const LogInForm = () => {
       const res = await loginUser(email, password);
       // console.log(res);
       // console.log(res.data);
+      
       console.log(res.status);
       if (res.status === "success") {
         localStorage.setItem("token", res.token);

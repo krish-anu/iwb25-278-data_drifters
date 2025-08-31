@@ -230,15 +230,13 @@ service / on new http:Listener(9090) {
             return errorResponse(401, "Invalid email or password");
         }
 
-        // Block unapproved admins
-        if userResult.role == ROLE_ADMIN && !(userResult.accepted ?: false) {
-            return errorResponse(403, "Admin account pending approval by Super Admin");
-        }
+   
+        
 
         string token = Utils:generateToken(userResult);
 
       models:UserInfo userInfo = {
-    _id: userResult?._id ?: "",
+    _id: userResult._id, // assuming _id is always present
     name: userResult.name,          // no fallback needed
     email: userResult.email,        // no fallback needed
     role: userResult?.role ?: ROLE_CUSTOMER,
@@ -287,7 +285,7 @@ service / on new http:Listener(9090) {
 
         string token = Utils:generateToken(userToCreate);
         models:UserInfo userInfo = {
-            _id: "",
+            _id: userToCreate._id,
             name: userToCreate.name,
             email: userToCreate.email,
             role: userToCreate.role ?: ROLE_CUSTOMER
@@ -314,7 +312,336 @@ service / on new http:Listener(9090) {
     // Get user profile (protected route)
    
     // ================= ADMIN APPROVAL =================
+resource function post shops/[string shopId]/products(@http:Payload json newProduct)
+            returns json|http:NotFound|http:InternalServerError|error {
 
+        // Connect to database and collection
+        mongodb:Database database = check mongoClient->getDatabase(databaseName);
+        mongodb:Collection mallCollection = check database->getCollection(collectionName_shops);
+
+        // First check if the shop exists
+        map<json> shopFilter = { "shops.id": shopId };
+        var shopDocResult = mallCollection->findOne(shopFilter, {}, (), LooseDoc);
+        if shopDocResult is error {
+            return <http:InternalServerError>{
+                body: { status: "error", message: "Error fetching shop data" }
+            };
+        }
+
+        if shopDocResult is () {
+            return <http:NotFound>{
+                body: { status: "error", message: "Shop not found: " + shopId }
+            };
+        }
+
+        LooseDoc shopDoc = <LooseDoc>shopDocResult;
+        json shopsJson = shopDoc["shops"];
+        if !(shopsJson is json[]) {
+            return <http:InternalServerError>{
+                body: { status: "error", message: "Invalid shop structure" }
+            };
+        }
+
+        json[] shops = <json[]>shopsJson;
+        json? shopJson = ();
+        foreach json s in shops {
+            if s is map<json> && s["id"] == shopId {
+                shopJson = s;
+                break;
+            }
+        }
+
+        if shopJson is () {
+            return <http:NotFound>{
+                body: { status: "error", message: "Shop not found: " + shopId }
+            };
+        }
+
+        map<json> shop = <map<json>>shopJson;
+        json productsJson = shop["products"];
+        json[] currentProducts = [];
+        if productsJson is json[] {
+            currentProducts = <json[]>productsJson;
+        } else if productsJson is map<json> {
+            currentProducts = [productsJson];
+        } else {
+            currentProducts = [];
+        }
+
+        currentProducts.push(newProduct);
+
+        // Update query: set the products array
+        mongodb:Update updateQuery = {
+            set: {
+                "shops.$.products": currentProducts
+            }
+        };
+
+        map<json> filter = { "shops.id": shopId };
+
+        mongodb:UpdateResult result = check mallCollection->updateOne(filter, updateQuery);
+
+        if result.matchedCount == 0 {
+            return <http:NotFound>{
+                body: { status: "error", message: "Shop not found: " + shopId }
+            };
+        }
+
+        if result.modifiedCount == 0 {
+            return <http:InternalServerError>{
+                body: { status: "error", message: "Failed to add product" }
+            };
+        }
+
+        return {
+            status: "success",
+            message: "Product added successfully",
+            product: newProduct
+        };
+    }
+    // ================= ORDERS =================
+
+    //Create a new order
+    // resource function post orders(@http:Header string? authorization, @http:Payload models:Order incoming)
+    //         returns models:OrderCreateResponse|http:Unauthorized|http:BadRequest|http:InternalServerError {
+
+    //     // 1. Authentication
+    //     models:UserInfo|http:Unauthorized userOrUnauthorized = getUserFromAuthHeader(authorization);
+    //     if userOrUnauthorized is http:Unauthorized {
+    //         return userOrUnauthorized;
+    //     }
+    //     models:UserInfo user = <models:UserInfo>userOrUnauthorized;
+
+    //     // 2. Input validation
+    //     if incoming.shopId.trim() == "" || incoming.mallId.trim() == "" {
+    //         return <http:BadRequest>{body: {status: "error", message: "Shop ID and Mall ID are required"}};
+    //     }
+
+    //     if incoming.items.length() == 0 {
+    //         return <http:BadRequest>{body: {status: "error", message: "Order must contain at least one item"}};
+    //     }
+
+    //     // 3. Validate order items
+    //     foreach models:OrderItem item in incoming.items {
+    //         if item.productId.trim() == "" || item.quantity <= 0 || item.price <= 0.0 {
+    //             return <http:BadRequest>{body: {status: "error", message: "Invalid order item: productId, quantity, and price must be valid"}};
+    //         }
+    //     }
+
+    //     // 4. Generate order ID and set metadata
+    //     string orderId = uuid:createType4AsString();
+    //     string currentDate = time:utcNow().toString();
+
+    //     // 5. Calculate totals and create items with all required fields
+    //     float totalPrice = 0.0;
+    //     models:OrderItem[] processedItems = [];
+
+    //     foreach models:OrderItem item in incoming.items {
+    //         float lineTotal = item.price * <float>item.quantity;
+    //         models:OrderItem processedItem = {
+    //             productId: item.productId,
+    //             quantity: item.quantity,
+    //             price: item.price,
+    //             lineTotal: lineTotal
+    //         };
+    //         processedItems.push(processedItem);
+    //         totalPrice += lineTotal;
+    //     }
+
+    //     // 6. Create complete order object
+    //     models:Order orderToInsert = {
+    //         _id: (), // Will be auto-generated by MongoDB
+    //         orderId: orderId,
+    //         shopId: incoming.shopId,
+    //         mallId: incoming.mallId,
+    //         customerName: user.name,
+    //         date: currentDate,
+    //         items: processedItems,
+    //         totalPrice: totalPrice,
+    //         status: "pending" // New orders start as pending (cart orders)
+    //     };
+
+    //     // 7. Insert order
+    //     error? insertResult = db:insertOrder(orderToInsert);
+    //     if insertResult is error {
+    //         return <http:InternalServerError>{body: {status: "error", message: "Failed to create order"}};
+    //     }
+
+    //     // 8. Return success response
+    //     return {
+    //         status: "success",
+    //         orderId: orderId,
+    //         insertedId: orderId // Using orderId as insertedId for consistency
+    //     };
+    // }
+
+    // // List orders
+    // resource function get orders(@http:Header string? authorization, string? shopId, string? mallId)
+    //         returns json|http:Unauthorized|http:InternalServerError|error {
+
+    //     // 1. Authentication
+    //     models:UserInfo|http:Unauthorized userOrUnauthorized = getUserFromAuthHeader(authorization);
+    //     if userOrUnauthorized is http:Unauthorized {
+    //         return userOrUnauthorized;
+    //     }
+    //     models:UserInfo user = <models:UserInfo>userOrUnauthorized;
+
+    //     // 2. Build filter based on query parameters
+    //     map<json> filter = {};
+
+    //     // Only show orders for the authenticated user (by customer name)
+    //     filter["customerName"] = user.name;
+
+    //     // Only show pending orders (current cart orders)
+    //     filter["status"] = "pending";
+
+    //     // Optional filters
+    //     if shopId is string && shopId.trim() != "" {
+    //         filter["shopId"] = shopId;
+    //     }
+    //     if mallId is string && mallId.trim() != "" {
+    //         filter["mallId"] = mallId;
+    //     }
+
+    //     // 3. Fetch orders from database
+    //     stream<models:Order, error?>|error orderStream = db:findOrders(filter);
+    //     if orderStream is error {
+    //         return <http:InternalServerError>{body: {status: "error", message: "Failed to fetch orders"}};
+    //     }
+
+    //     // 4. Convert stream to array with error handling
+    //     models:Order[] orders = check from models:Order o in orderStream
+    //         select o;
+
+    //     // 5. Return orders
+    //     return {
+    //         status: "success",
+    //         orders: orders,
+    //         count: orders.length()
+    //     };
+    // }
+
+    // Get one order by ID
+    resource function get orders/[string orderId](@http:Header string? authorization)
+            returns json|http:Unauthorized|http:NotFound|http:InternalServerError|error {
+
+        // 1. Authentication
+        models:UserInfo|http:Unauthorized userOrUnauthorized = getUserFromAuthHeader(authorization);
+        if userOrUnauthorized is http:Unauthorized {
+            return userOrUnauthorized;
+        }
+        models:UserInfo user = <models:UserInfo>userOrUnauthorized;
+
+        // 2. Fetch order from database
+        models:Order|error orderResult = db:findOrderByOrderId(orderId);
+        if orderResult is error {
+            return <http:NotFound>{body: {status: "error", message: "Order not found"}};
+        }
+
+        // 3. Check if the order belongs to the authenticated user
+        if orderResult.customerName != user.name {
+            return <http:Unauthorized>{body: {status: "error", message: "Access denied: Order does not belong to you"}};
+        }
+
+        // 4. Return order
+        return {
+            status: "success",
+            "order": orderResult
+        };
+    }
+
+    // Confirm/place an order (change status from pending to confirmed)
+    resource function post orders/[string orderId]/confirm(@http:Header string? authorization)
+            returns json|http:Unauthorized|http:NotFound|http:InternalServerError|error {
+
+        // 1. Authentication
+        models:UserInfo|http:Unauthorized userOrUnauthorized = getUserFromAuthHeader(authorization);
+        if userOrUnauthorized is http:Unauthorized {
+            return userOrUnauthorized;
+        }
+        models:UserInfo user = <models:UserInfo>userOrUnauthorized;
+
+        // 2. Fetch order from database
+        models:Order|error orderResult = db:findOrderByOrderId(orderId);
+        if orderResult is error {
+            return <http:NotFound>{body: {status: "error", message: "Order not found"}};
+        }
+
+        // 3. Check if the order belongs to the authenticated user
+        if orderResult.customerName != user.name {
+            return <http:Unauthorized>{body: {status: "error", message: "Access denied: Order does not belong to you"}};
+        }
+
+        // 4. Check if order is already confirmed
+        if orderResult.status == "confirmed" {
+            return <http:InternalServerError>{body: {status: "error", message: "Order is already confirmed"}};
+        }
+
+        // 5. Update order status to confirmed
+        map<json> filter = {"orderId": orderId};
+        mongodb:Update updateDoc = {"set": {"status": "confirmed"}};
+
+        mongodb:Database database = check mongoClient->getDatabase(databaseName);
+        mongodb:Collection collection = check database->getCollection("orders");
+
+        mongodb:UpdateResult|error updateResult = collection->updateOne(filter, updateDoc);
+        if updateResult is error {
+            return <http:InternalServerError>{body: {status: "error", message: "Failed to confirm order"}};
+        }
+
+        // 6. Return success
+        return {
+            status: "success",
+            message: "Order confirmed successfully",
+            orderId: orderId
+        };
+    }
+
+    // Get order history (confirmed orders)
+    resource function get orders/history(@http:Header string? authorization, string? shopId, string? mallId)
+            returns json|http:Unauthorized|http:InternalServerError|error {
+
+        // 1. Authentication
+        models:UserInfo|http:Unauthorized userOrUnauthorized = getUserFromAuthHeader(authorization);
+        if userOrUnauthorized is http:Unauthorized {
+            return userOrUnauthorized;
+        }
+        models:UserInfo user = <models:UserInfo>userOrUnauthorized;
+
+        // 2. Build filter based on query parameters
+        map<json> filter = {};
+
+        // Only show orders for the authenticated user (by customer name)
+        filter["customerName"] = user.name;
+
+        // Only show confirmed orders (placed orders)
+        filter["status"] = "confirmed";
+
+        // Optional filters
+        if shopId is string && shopId.trim() != "" {
+            filter["shopId"] = shopId;
+        }
+        if mallId is string && mallId.trim() != "" {
+            filter["mallId"] = mallId;
+        }
+
+        // 3. Fetch orders from database
+        stream<models:Order, error?>|error orderStream = db:findOrders(filter);
+        if orderStream is error {
+            return <http:InternalServerError>{body: {status: "error", message: "Failed to fetch order history"}};
+        }
+
+        // 4. Convert stream to array with error handling
+        models:Order[] orders = check from models:Order o in orderStream
+            select o;
+
+        // 5. Return orders
+        return {
+            status: "success",
+            orders: orders,
+            count: orders.length()
+        };
+    }
     resource function put admin/approve/[string userId](@http:Header string? authorization)
             returns http:Ok|http:InternalServerError|http:Unauthorized|http:Forbidden {
 
@@ -486,36 +813,46 @@ service / on new http:Listener(9090) {
     }
 
     // ================= SHOP PRODUCTS =================
-    resource function get [string shopId]/products() returns json|http:NotFound|http:InternalServerError|error {
-        mongodb:Database database = check mongoClient->getDatabase(databaseName);
-        mongodb:Collection mallCollection = check database->getCollection(collectionName_shops);
+   resource function get admin/[string shopId]/products() returns json|http:NotFound|http:InternalServerError|error {
 
-        map<json>[] pipeline = [
-            { "$match": { "shops.id": shopId } },
-            { "$unwind": "$shops" },
-            { "$match": { "shops.id": shopId } },
-            {
-                "$project": {
+        // Connect to database and collection
+            mongodb:Database database = check mongoClient->getDatabase(databaseName);
+            mongodb:Collection mallCollection = check database->getCollection(collectionName_shops);
+
+        // Aggregation pipeline
+            map<json>[] pipeline = [
+                { "$match": { "shops.id": shopId, "shops": { "$type": "array" } } },
+                { "$unwind": "$shops" },
+                { "$match": { "shops.id": shopId } },
+                {
+                    "$project": {
                     "_id": 0,
                     "products": "$shops.products",
                     "shopId": "$shops.id",
                     "shopName": "$shops.name",
                     "mallId": "$mallId",
                     "mallName": "$mallName"
+                    }
                 }
-            }
         ];
 
-        stream<json, error?> results = check mallCollection->aggregate(pipeline, json);
-        json[] documents = check from var doc in results select doc;
+        // Run aggregation
+            stream<json, error?> results = check mallCollection->aggregate(pipeline, json);
+        // Convert stream to array
+        // Convert stream to array
+            json[] documents = check from var doc in results select doc;
 
-        if documents.length() == 0 {
-            return <http:NotFound>{
-                body: { status: "error", message: "Shop not found: " + shopId }
-            };
-        }
+        // Check if we got any documents
+            if documents.length() == 0 {
+                return <http:NotFound>{
+                    body: { status: "error", message: "Shop not found: " + shopId }
+                };
+            }
 
+        // Cast the first document to map<json> to access its fields
         map<json> firstDoc = <map<json>>documents[0];
+
+        // Return products
         return <json>{
             shopId: firstDoc["shopId"],
             shopName: firstDoc["shopName"],
@@ -642,11 +979,9 @@ resource function get images() returns json[]|error {
         };
     }
 
-    // List orders
-    resource function get orders(@http:Header string? authorization, string? shopId, string? mallId)
-            returns json|http:Unauthorized|http:InternalServerError {
-        return {status: "error", message: "Not implemented"};
-    }
+
+
+ 
 
     // ================= CHANGE PASSWORD =================
     resource function post admin/changePassword(models:ChangePasswordRequest req, @http:Header string? authorization)
@@ -701,6 +1036,85 @@ resource function get images() returns json[]|error {
             email: user.email,
             role: user.role
         };
+    }
+    resource function get admin/customers/[string shopId]()
+            returns json|http:InternalServerError|error {
+
+        // Connect to database
+        mongodb:Database database = check mongoClient->getDatabase(databaseName);
+        mongodb:Collection collection = check database->getCollection(collectionName_customers);
+
+        // Filter customers who have the shopId in their preferredStores
+        map<json> filter = { "preferredStores.shopId": shopId };
+        stream<record {| anydata...; |}, error?> customerStream = check collection->find(filter);
+        record {| anydata...; |}[] customers = check from var customer in customerStream select customer;
+
+        // Filter orders for each customer to only include orders from this shop
+        // Extract shop suffix (e.g., "S1" from "M1-S1")
+        string shopSuffix = "";
+        if string:includes(shopId, "-S") {
+            int? lastDashIndex = string:lastIndexOf(shopId, "-S");
+            if lastDashIndex is int {
+                shopSuffix = shopId.substring(lastDashIndex + 2);
+            }
+        }
+
+        // Filter orders for each customer
+        foreach var customer in customers {
+            anydata ordersData = customer["orders"];
+            if ordersData is json[] {
+                json[] ordersJson = ordersData;
+                json[] filteredOrders = [];
+                foreach json ord in ordersJson {
+                    if ord is map<json> {
+                        string? orderId = <string?>ord["orderId"];
+                        if orderId is string && string:startsWith(orderId, "S" + shopSuffix + "-O") {
+                            filteredOrders.push(ord);
+                        }
+                    }
+                }
+                customer["orders"] = filteredOrders;
+            }
+        }
+
+        // Convert each customer record to JSON
+        json[] customersJson = [];
+        foreach var customer in customers {
+            map<json> customerJson = {};
+            foreach var [key, value] in customer.entries() {
+                if value is anydata && value !is () {
+                    // Try to convert to JSON-compatible type
+                    if value is json {
+                        customerJson[key] = value;
+                    } else if value is string {
+                        customerJson[key] = value;
+                    } else if value is int {
+                        customerJson[key] = value;
+                    } else if value is float {
+                        customerJson[key] = value;
+                    } else if value is boolean {
+                        customerJson[key] = value;
+                    } else if value is anydata[] {
+                        // Handle arrays recursively
+                        json[] arrayJson = [];
+                        foreach var item in value {
+                            if item is json {
+                                arrayJson.push(item);
+                            } else {
+                                // Convert non-JSON items to string representation
+                                arrayJson.push(item.toString());
+                            }
+                        }
+                        customerJson[key] = arrayJson;
+                    } else {
+                        // Convert other types to string
+                        customerJson[key] = value.toString();
+                    }
+                }
+            }
+            customersJson.push(customerJson);
+        }
+        return {customers: customersJson};
     }
 }
 

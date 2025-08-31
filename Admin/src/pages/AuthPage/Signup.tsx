@@ -18,11 +18,11 @@ export default function Signup() {
     setError("");
 
     try {
-      const res = await registerUser(name, email, password, role); // pass role
+      const res = await registerUser(Date.now().toString(),name, email, password, role); // pass role
       console.log(res.status);
       if (res.status === "success") {
         localStorage.setItem("token", res.token);
-        alert(`Welcome, ${res.user.name} 🎉`);
+        alert(`Welcome ${res.user.name} 🎉`);
       } else {
         setError(res.message || "Signup failed");
       }
@@ -38,10 +38,10 @@ export default function Signup() {
       <div className="relative z-10 max-w-xl w-full bg-white/90 backdrop-blur-md rounded-2xl p-10 shadow-2xl">
         <form onSubmit={handleSignup} className="space-y-6">
           <div className="text-center space-y-3">
-            <div className="w-16 h-16 mx-auto bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg">
-              <Sparkles className="w-8 h-8 text-white" />
+            <div className="w-16 h-16 mx-auto bg-gradient-to-r from-orange-400 via-orange-500 to-orange-600 rounded-2xl flex items-center justify-center shadow-lg">
+              <Sparkles className="w-8 h-8 text-black" />
             </div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-orange-400 via-orange-500 to-orange-600 bg-clip-text text-transparent">
               Create Account
             </h1>
             <p className="text-gray-600">Join our community today</p>
@@ -144,7 +144,7 @@ export default function Signup() {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full h-12 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all"
+            className="w-full h-12 bg-gradient-to-r from-orange-400 via-orange-500 to-orange-600 text-white font-semibold rounded-xl transition-all"
           >
             {isLoading ? "Creating Account..." : "Sign Up"}
           </button>

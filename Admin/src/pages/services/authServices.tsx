@@ -15,6 +15,7 @@ export const loginUser = async (email: string, password: string) => {
 
 
 export const registerUser = async (
+  _id: string,
   name: string,
   email: string,
   password: string,
@@ -22,7 +23,9 @@ export const registerUser = async (
 ) => {
   try {
     const res = await axios.post("http://localhost:9090/auth/register", {
+      _id,
       name,
+
       email,
       password,
       role, // ✅ send role to backend
