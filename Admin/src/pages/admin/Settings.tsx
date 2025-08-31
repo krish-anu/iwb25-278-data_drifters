@@ -14,7 +14,7 @@ import {
   Lock, 
   Bell, 
   Shield, 
-  Database, 
+  // Database, 
   Calendar,
   Eye,
   EyeOff,
@@ -23,8 +23,8 @@ import {
   Download,
   Trash2,
   Settings,
-  Users,
-  Building
+  Users
+  // Building
 } from "lucide-react";
 
 const AdminSettings = () => {
@@ -34,7 +34,7 @@ const AdminSettings = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [userName, setUserName] = useState("");
   const [userRole, setUserRole] = useState("");
-  const fileInputRef = useRef(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -101,7 +101,8 @@ const AdminSettings = () => {
   const [isBackupDialogOpen, setIsBackupDialogOpen] = useState(false);
   const [isDeleteDataDialogOpen, setIsDeleteDataDialogOpen] = useState(false);
 
-  const handleAvatarUpload = (event) => {
+  const handleAvatarUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!event.target.files) return;
     const file = event.target.files[0];
     if (file) {
       // Check file size (max 2MB)
@@ -119,10 +120,12 @@ const AdminSettings = () => {
       // Create preview URL
       const reader = new FileReader();
       reader.onload = (e) => {
-        setAdminProfile({
-          ...adminProfile,
-          avatar: e.target.result
-        });
+        if (typeof e.target?.result === 'string') {
+          setAdminProfile({
+            ...adminProfile,
+            avatar: e.target.result
+          });
+        }
       };
       reader.readAsDataURL(file);
     }
@@ -242,8 +245,8 @@ const AdminSettings = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-center items-center">
-        <div className="text-center">
+      <div className="flex justify-between items-left">
+        <div>
           <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
           <p className="text-muted-foreground">
             Manage your account, system preferences, and application settings.
