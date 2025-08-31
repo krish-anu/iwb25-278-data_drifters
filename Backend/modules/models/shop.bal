@@ -8,12 +8,12 @@ public type Shop record {
     string ownerName;
     string contactNumber;
     string description;
-    Product[] products;
+    json[] products;
     string email;
     string category?;
     float rating?;
     int reviewCount?;
-    string image?;
+    string imageUrl?;
     int discount?;
 
 };

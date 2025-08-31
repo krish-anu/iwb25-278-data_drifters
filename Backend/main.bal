@@ -3,12 +3,20 @@ import Backend.db as db;
 import Backend.models as models;
 import Backend.utils as Utils;
 
+import ballerina/io;
+
 import ballerina/http;
 import ballerina/io;
 // import ballerina/log;
 import ballerina/time;
 import ballerina/uuid;
 import ballerinax/mongodb;
+
+// import ballerinax/bson;
+// import ballerina/crypto;
+
+
+
 
 // Configuration
 configurable string mongodbConnectionString = ?;
@@ -26,10 +34,18 @@ mongodb:Client mongoClient = check new (mongoConfig);
 // Session storage (in-memory)
 map<models:UserInfo> activeSessions = {};
 
+
+
+
 // Define roles
 const string ROLE_ADMIN = "admin";
 const string ROLE_SELLER = "seller";
 const string ROLE_CUSTOMER = "customer";
+
+// Loose document type for flexible parsing
+type LooseDoc record {|
+    json...;
+|};
 
 // CORS configuration
 
@@ -68,7 +84,9 @@ service / on new http:Listener(9090) {
         string token = Utils:generateToken(userResult);
 
         models:UserInfo userInfo = {
-            _id: "",
+
+            _id: userResult._id ?: "",
+
             name: userResult.name,
             email: userResult.email,
             role: userResult.role ?: ROLE_CUSTOMER,
@@ -145,11 +163,10 @@ service / on new http:Listener(9090) {
     resource function get auth/profile(@http:Header string? authorization)
     returns models:UserInfo|models:LoginResponse|http:InternalServerError|http:BadRequest|http:Conflict|http:Unauthorized|http:Forbidden {
 
-        var result = getUserFromAuthHeader(authorization);
-        return result;
-    }
+   
 
     // ================= ADMIN APPROVAL =================
+
     resource function put admin/approve/[string userId](@http:Header string? authorization)
             returns http:Ok|http:InternalServerError|http:Unauthorized|http:Forbidden {
 
@@ -167,51 +184,54 @@ service / on new http:Listener(9090) {
                 body: {status: "error", message: "No admin found with that ID"}
             };
         }
-
         return <http:Ok>{
-            body: {
-                status: "success",
-                message: "Admin approved successfully"
-            }
+            body: { status: "success", message: "Admin approved successfully" }
         };
     }
+  
 
     // ================= PENDING ADMINS =================
     resource function get users/pendingAdmins(@http:Header string? authorization)
         returns json|http:Unauthorized|http:Forbidden|http:InternalServerError|error {
 
+
         mongodb:Database|error dbResult = mongoClient->getDatabase(databaseName);
         if dbResult is error {
-            return <http:InternalServerError>{body: {status: "error", message: "Database error"}};
+            return <http:InternalServerError>{ body: { status: "error", message: "Database error" } };
         }
         mongodb:Database database = dbResult;
 
         mongodb:Collection|error colResult = database->getCollection(collectionName_users);
         if colResult is error {
-            return <http:InternalServerError>{body: {status: "error", message: "Collection error"}};
+            return <http:InternalServerError>{ body: { status: "error", message: "Collection error" } };
         }
         mongodb:Collection collection = colResult;
 
-        map<json> filter = {"role": "admin", "accepted": false};
+        map<json> filter = { "role": "admin", "accepted": false };
         stream<models:User, error?> userStream = check collection->find(filter, {}, (), models:User);
 
-        models:User[] users = check from models:User u in userStream
-            select u;
+        models:User[] users = check from models:User u in userStream select u;
 
         // Convert User[] to json[]
         json[] usersJson = from models:User u in users
-            select {
-                _id: "",
-                name: u.name,
-                email: u.email,
-                role: u.role,
-                accepted: u.accepted,
-                createdAt: u.createdAt,
-                updatedAt: u.updatedAt
-            };
+                        select {
+                            _id: u._id,
+                            name: u.name,
+                            email: u.email,
+                            role: u.role,
+                            accepted: u.accepted,
+                            createdAt: u.createdAt,
+                            updatedAt: u.updatedAt
+                        };
 
-        return <json>{users: usersJson};
+        return <json>{ users: usersJson };
     }
+
+
+
+
+
+
 
     // ================= PRODUCTS (Admin & Seller only) =================
     resource function get products(@http:Header string? authorization)
@@ -235,7 +255,7 @@ service / on new http:Listener(9090) {
         }
 
         mongodb:Database database;
-        error? err = ();
+        // error? err = ();
         // Get database connection
         database = check mongoClient->getDatabase(databaseName);
 
@@ -251,6 +271,7 @@ service / on new http:Listener(9090) {
 
     // ================= SHOP PRODUCTS =================
     resource function get [string shopId]/products() returns json|http:NotFound|http:InternalServerError|error {
+
 
         // Connect to database and collection
         mongodb:Database database = check mongoClient->getDatabase(databaseName);
@@ -289,6 +310,7 @@ service / on new http:Listener(9090) {
         // Cast the first document to map<json> to access its fields
         map<json> firstDoc = <map<json>>documents[0];
 
+
         // Return products
         return <json>{
             shopId: firstDoc["shopId"],
@@ -302,6 +324,7 @@ service / on new http:Listener(9090) {
     // ================= SHOPS (Public) =================
     resource function get [int id]/shops() returns json|error {
         string mallId = "M" + id.toString();
+
         models:MallDoc? mallDocOptional = check getMallByMallId(mallId, mongoClient);
 
         if mallDocOptional is models:MallDoc {
@@ -322,9 +345,15 @@ service / on new http:Listener(9090) {
             return {shops: shopsJson};
         }
 
-        // Return empty shops array if mall not found (for testing purposes)
-        return {shops: []};
+
+        return {
+            status: "error",
+            message: "Mall not found for id " + id.toString()
+        };
+
     }
+
+
 
     // ================= ORDERS =================
 
@@ -449,6 +478,7 @@ service / on new http:Listener(9090) {
     }
 
     // Get one order by ID
+
     resource function get orders/[string orderId](@http:Header string? authorization)
             returns json|http:Unauthorized|http:NotFound|http:InternalServerError|error {
 
@@ -477,9 +507,16 @@ service / on new http:Listener(9090) {
         };
     }
 
+    // resource function get orders/[string orderId](@http:Header string? authorization)
+    //         returns json|http:Unauthorized|http:NotFound|http:InternalServerError {
+    //     // Will return  one order by orderId
+    // }
+
+
     // Confirm/place an order (change status from pending to confirmed)
     resource function post orders/[string orderId]/confirm(@http:Header string? authorization)
             returns json|http:Unauthorized|http:NotFound|http:InternalServerError|error {
+
 
         // 1. Authentication
         models:UserInfo|http:Unauthorized userOrUnauthorized = getUserFromAuthHeader(authorization);
@@ -523,6 +560,7 @@ service / on new http:Listener(9090) {
             orderId: orderId
         };
     }
+
 
     // Get order history (confirmed orders)
     resource function get orders/history(@http:Header string? authorization, string? shopId, string? mallId)
@@ -634,6 +672,240 @@ service / on new http:Listener(9090) {
             role: user.role
         };
     }
+
+
+// ================= ADD PRODUCTS =================
+    resource function post shops/[string shopId]/products(@http:Payload json newProduct)
+            returns json|http:NotFound|http:InternalServerError|error {
+
+        // Connect to database and collection
+        mongodb:Database database = check mongoClient->getDatabase(databaseName);
+        io:print("OOPS!");
+        mongodb:Collection mallCollection = check database->getCollection(collectionName_shops);
+
+        // First check if the shop exists
+        map<json> shopFilter = { "shops.id": shopId };
+        var shopDocResult = mallCollection->findOne(shopFilter, {}, (), LooseDoc);
+        if shopDocResult is error {
+            return <http:InternalServerError>{
+                body: { status: "error", message: "Error fetching shop data" }
+            };
+        }
+
+        if shopDocResult is () {
+            return <http:NotFound>{
+                body: { status: "error", message: "Shop not found: " + shopId }
+            };
+        }
+
+        LooseDoc shopDoc = <LooseDoc>shopDocResult;
+        json shopsJson = shopDoc["shops"];
+        if !(shopsJson is json[]) {
+            return <http:InternalServerError>{
+                body: { status: "error", message: "Invalid shop structure" }
+            };
+        }
+
+        json[] shops = <json[]>shopsJson;
+        json? shopJson = ();
+        foreach json s in shops {
+            if s is map<json> && s["id"] == shopId {
+                shopJson = s;
+                break;
+            }
+        }
+
+        if shopJson is () {
+            return <http:NotFound>{
+                body: { status: "error", message: "Shop not found: " + shopId }
+            };
+        }
+
+        map<json> shop = <map<json>>shopJson;
+        json productsJson = shop["products"];
+        json[] currentProducts = [];
+        if productsJson is json[] {
+            currentProducts = <json[]>productsJson;
+        } else if productsJson is map<json> {
+            currentProducts = [productsJson];
+        } else {
+            currentProducts = [];
+        }
+
+        currentProducts.push(newProduct);
+
+        // Update query: set the products array
+        mongodb:Update updateQuery = {
+            set: {
+                "shops.$.products": currentProducts
+            }
+        };
+
+        map<json> filter = { "shops.id": shopId };
+
+        mongodb:UpdateResult result = check mallCollection->updateOne(filter, updateQuery);
+
+        if result.matchedCount == 0 {
+            return <http:NotFound>{
+                body: { status: "error", message: "Shop not found: " + shopId }
+            };
+        }
+
+        if result.modifiedCount == 0 {
+            return <http:InternalServerError>{
+                body: { status: "error", message: "Failed to add product" }
+            };
+        }
+
+        return {
+            status: "success",
+            message: "Product added successfully",
+            product: newProduct
+        };
+    }
+
+    // ================= EDIT PRODUCTS =================
+    resource function put shops/[string shopId]/products/[string productId](@http:Payload json updatedProduct)
+            returns json|http:NotFound|http:InternalServerError|error {
+
+        // Connect to database and collection
+        mongodb:Database database = check mongoClient->getDatabase(databaseName);
+        mongodb:Collection mallCollection = check database->getCollection(collectionName_shops);
+
+        // First check if the shop exists
+        map<json> shopFilter = { "shops.id": shopId };
+        var shopDocResult = mallCollection->findOne(shopFilter, {}, (), LooseDoc);
+        if shopDocResult is error {
+            return <http:InternalServerError>{
+                body: { status: "error", message: "Error fetching shop data" }
+            };
+        }
+
+        if shopDocResult is () {
+            return <http:NotFound>{
+                body: { status: "error", message: "Shop not found: " + shopId }
+            };
+        }
+
+        LooseDoc shopDoc = <LooseDoc>shopDocResult;
+        json shopsJson = shopDoc["shops"];
+        if !(shopsJson is json[]) {
+            return <http:InternalServerError>{
+                body: { status: "error", message: "Invalid shop structure" }
+            };
+        }
+
+        json[] shops = <json[]>shopsJson;
+        json? shopJson = ();
+        foreach json s in shops {
+            if s is map<json> && s["id"] == shopId {
+                shopJson = s;
+                break;
+            }
+        }
+
+        if shopJson is () {
+            return <http:NotFound>{
+                body: { status: "error", message: "Shop not found: " + shopId }
+            };
+        }
+
+        map<json> shop = <map<json>>shopJson;
+        json productsJson = shop["products"];
+        json[] currentProducts = [];
+        if productsJson is json[] {
+            currentProducts = <json[]>productsJson;
+        } else if productsJson is map<json> {
+            currentProducts = [productsJson];
+        } else {
+            currentProducts = [];
+        }
+
+        // Find and update the product
+        boolean productFound = false;
+        foreach int i in 0 ..< currentProducts.length() {
+            if currentProducts[i] is map<json> {
+                map<json> prod = <map<json>>currentProducts[i];
+                if prod["id"] == productId {
+                    currentProducts[i] = updatedProduct;
+                    productFound = true;
+                    break;
+                }
+            }
+        }
+
+        if !productFound {
+            return <http:NotFound>{
+                body: { status: "error", message: "Product not found: " + productId }
+            };
+        }
+
+        // Update query: set the products array
+        mongodb:Update updateQuery = {
+            set: {
+                "shops.$.products": currentProducts
+            }
+        };
+
+        map<json> filter = { "shops.id": shopId };
+
+        mongodb:UpdateResult result = check mallCollection->updateOne(filter, updateQuery);
+
+        if result.matchedCount == 0 {
+            return <http:InternalServerError>{
+                body: { status: "error", message: "Failed to update product" }
+            };
+        }
+
+        return {
+            status: "success",
+            message: "Product updated successfully",
+            product: updatedProduct
+        };
+    }
+
+    // Also add the admin endpoint for fetching products
+    resource function get admin/[string shopId]/products() returns json|http:NotFound|http:InternalServerError|error {
+        // Connect to database and collection
+        mongodb:Database database = check mongoClient->getDatabase(databaseName);
+        mongodb:Collection mallCollection = check database->getCollection(collectionName_shops);
+
+        // Aggregation pipeline
+        map<json>[] pipeline = [
+            { "$match": { "shops.id": shopId, "shops": { "$type": "array" } } },
+            { "$unwind": "$shops" },
+            { "$match": { "shops.id": shopId } },
+            {
+                "$project": {
+                "_id": 0,
+                "products": "$shops.products",
+                "shopId": "$shops.id",
+                "shopName": "$shops.name",
+                "mallId": "$mallId",
+                "mallName": "$mallName"
+                }
+            }
+        ];
+
+        // Run aggregation
+        stream<json, error?> results = check mallCollection->aggregate(pipeline, json);
+        // Convert stream to array
+        json[] documents = check from var doc in results select doc;
+
+        // Check if we got any documents
+        if documents.length() == 0 {
+            return <http:NotFound>{
+                body: { status: "error", message: "Shop not found: " + shopId }
+            };
+        }
+
+        // Cast the first document to map<json> to access its fields
+        map<json> firstDoc = <map<json>>documents[0];
+
+        // Return products with just the products array for the admin endpoint
+        return firstDoc["products"];
+    }
+
 }
 
 // ================= HELPER FUNCTIONS =================
@@ -653,8 +925,30 @@ function findUserByEmail(string email) returns models:User|error {
 }
 
 function getMallByMallId(string id, mongodb:Client mongoClient) returns models:MallDoc|error {
-    return db:findMallByMallId(id);
+
+    mongodb:Database database = check mongoClient->getDatabase(databaseName);
+    mongodb:Collection collection = check database->getCollection(collectionName_shops);
+
+    // Ensure mallId is correct
+    string mallId = id.startsWith("M") ? id : "M" + id;
+    io:println("Searching mallId: ", mallId);
+
+    map<json> query = { "mallId": mallId };
+
+    // Use typedesc safely
+    stream<models:MallDoc, error?> mallStream = check collection->find(query, {}, (), models:MallDoc);
+    io:println("Malls found: ", mallStream);
+
+    models:MallDoc[] malls = check from models:MallDoc mall in mallStream
+        select mall;
+
+    if malls.length() > 0 {
+        return malls[0];
+    }
+    return error("Mall not found");
+
 }
+
 
 // ================= AUTH HELPERS =================
 function getUserFromAuthHeader(string? authorization)
@@ -684,6 +978,7 @@ function getUserFromAuthHeader(string? authorization)
 
     return userInfo;
 }
+
 
 function checkRole(models:UserInfo user, string... allowedRoles) returns boolean {
     foreach string role in allowedRoles {
@@ -737,3 +1032,4 @@ function approveAdmin(string userId) returns mongodb:UpdateResult|error {
 
     return response;
 }
+

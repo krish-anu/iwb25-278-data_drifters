@@ -211,9 +211,9 @@ const AdminSettings = () => {
     { id: "profile", label: "Profile", icon: User },
     { id: "password", label: "Password", icon: Lock },
     // { id: "notifications", label: "Notifications", icon: Bell },
-    { id: "system", label: "System", icon: Settings },
+    { id: "system", label: "System", icon: Settings }
     // { id: "security", label: "Security", icon: Shield },
-    { id: "data", label: "Data Management", icon: Database }
+    // { id: "data", label: "Data Management", icon: Database }
   ];
 
   // const languages = [
