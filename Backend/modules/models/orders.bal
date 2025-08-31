@@ -6,7 +6,6 @@ public type OrderItem record {|
 |};
 
 public type Order record {|
-    string _id?;
     string orderId?;
     string shopId;
     string mallId;
@@ -14,6 +13,7 @@ public type Order record {|
     string date?;
     OrderItem[] items;
     float totalPrice?;
+    string status?;
 |};
 
 public type OrderCreateResponse record {|

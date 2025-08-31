@@ -11,14 +11,15 @@ import NotFound from "./pages/NotFound";
 import AdminLayout from "./components/AdminLayout";
 import Dashboard from "./pages/admin/Dashboard";
 import Products from "./pages/admin/Products";
-import Stores from "./pages/admin/Stores";
+import Orders from "./pages/admin/Orders";  
+// import Stores from "./pages/admin/Stores";
 import Settings from "./pages/admin/Settings";
 import "./App.css"
 
 const queryClient = new QueryClient();
 
 const App = () => {
-  const token = localStorage.getItem("token") || "";
+  // const token = localStorage.getItem("token") || "";
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -33,6 +34,7 @@ const App = () => {
             <Route index element={<Dashboard />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="products" element={<Products />} />
+            <Route path="orders" element={<Orders />} />
             {/* <Route path="stores" element={<Stores />} /> */}
             <Route path="settings" element={<Settings />} />
           </Route>
