@@ -6,13 +6,15 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 import { LogInForm } from './pages/AuthPage/login-form';
 import SignUp from './pages/AuthPage/Signup';
-import SuperAdmin from './pages/SuperAdmin/SuperAdmin';
 import NotFound from "./pages/NotFound";
 import AdminLayout from "./components/AdminLayout";
 import Dashboard from "./pages/admin/Dashboard";
 import Products from "./pages/admin/Products";
-import Stores from "./pages/admin/Stores";
+// import Stores from "./pages/admin/Stores";
 import Settings from "./pages/admin/Settings";
+import SuperAdmin from "./pages/SuperAdmin/SuperAdmin";
+import SuperAdminDashboard from "./pages/SuperAdmin/dashboard";
+import SuperAdminStores from "./pages/SuperAdmin/stores";
 import "./App.css"
 
 const queryClient = new QueryClient();
@@ -36,7 +38,11 @@ const App = () => {
             {/* <Route path="stores" element={<Stores />} /> */}
             <Route path="settings" element={<Settings />} />
           </Route>
-          <Route path="/superadmin" element={<SuperAdmin />} />
+          <Route path="/superadmin" element={<SuperAdmin />}>
+            <Route index element={<Dashboard />} />
+            <Route path="dashboard" element={<SuperAdminDashboard />} />
+            <Route path="stores" element={<SuperAdminStores />} />
+          </Route>
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
