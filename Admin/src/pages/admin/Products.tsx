@@ -337,11 +337,49 @@ const handleAddProduct = async () => {
     setIsDeleteDialogOpen(true);
   };
 
-  const handleConfirmDelete = () => {
-    if (productToDelete) {
-      setProducts(products.filter(p => p.id !== productToDelete.id));
+  const handleConfirmDelete = async () => {
+    if (!productToDelete) return;
+
+    try {
+      const shopId = "M1-S1"; // Use the same shopId as in add/edit
+
+      // Call the backend delete API
+      const response = await fetch(
+        `http://localhost:9090/shops/${shopId}/products/${productToDelete.id}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to delete product");
+      }
+
+      const result = await response.json();
+      console.log("Product deleted successfully:", result);
+
+      // Refresh the products list
+      const updatedRes = await fetch(`http://localhost:9090/admin/${shopId}/products`);
+      if (updatedRes.ok) {
+        const updatedData = await updatedRes.json();
+
+        // Handle different response structures
+        if (Array.isArray(updatedData)) {
+          setProducts(updatedData);
+        } else if (updatedData.products && Array.isArray(updatedData.products)) {
+          setProducts(updatedData.products);
+        } else {
+          console.warn("Unexpected response structure for refresh:", updatedData);
+        }
+      }
+
       setProductToDelete(null);
       setIsDeleteDialogOpen(false);
+      alert("Product deleted successfully!");
+    } catch (error) {
+      console.error("Error deleting product:", error);
+      alert(`Error: ${error instanceof Error ? error.message : 'Something went wrong while deleting the product.'}`);
     }
   };
 

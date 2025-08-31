@@ -11,7 +11,8 @@ import NotFound from "./pages/NotFound";
 import AdminLayout from "./components/AdminLayout";
 import Dashboard from "./pages/admin/Dashboard";
 import Products from "./pages/admin/Products";
-import Orders from "./pages/admin/Orders";  
+import Orders from "./pages/admin/Orders"; 
+import Customers from "./pages/admin/Customers";
 // import Stores from "./pages/admin/Stores";
 import Settings from "./pages/admin/Settings";
 import "./App.css"
@@ -35,6 +36,7 @@ const App = () => {
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="products" element={<Products />} />
             <Route path="orders" element={<Orders />} />
+            <Route path="customers" element={<Customers />} />
             {/* <Route path="stores" element={<Stores />} /> */}
             <Route path="settings" element={<Settings />} />
           </Route>

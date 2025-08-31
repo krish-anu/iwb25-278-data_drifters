@@ -18,6 +18,7 @@ configurable string collectionName_users = ?;
 configurable string collectionName_products = ?;
 configurable string collectionName_shops = ?;
 configurable string collectionName_orders = ?;
+configurable string collectionName_customers = ?;
 
 // MongoDB client configuration
 mongodb:ConnectionConfig mongoConfig = {
@@ -277,7 +278,6 @@ service / on new http:Listener(9090) {
         if userOrUnauthorized is http:Unauthorized {
             return userOrUnauthorized;
         }
-
         models:UserInfo user = <models:UserInfo>userOrUnauthorized;
 
         if !checkRole(user, ROLE_ADMIN, ROLE_SELLER) {
@@ -663,7 +663,6 @@ service / on new http:Listener(9090) {
 
         // Connect to database and collection
         mongodb:Database database = check mongoClient->getDatabase(databaseName);
-        io:print("OOPS!");
         mongodb:Collection mallCollection = check database->getCollection(collectionName_shops);
 
         // First check if the shop exists
@@ -847,6 +846,109 @@ service / on new http:Listener(9090) {
         };
     }
 
+    // ================= DELETE PRODUCTS =================
+    resource function delete shops/[string shopId]/products/[string productId]()
+            returns json|http:NotFound|http:InternalServerError|error {
+
+        // Connect to database and collection
+        mongodb:Database database = check mongoClient->getDatabase(databaseName);
+        mongodb:Collection mallCollection = check database->getCollection(collectionName_shops);
+        
+        // First check if the shop exists
+        map<json> shopFilter = { "shops.id": shopId };
+        var shopDocResult = mallCollection->findOne(shopFilter, {}, (), LooseDoc);
+        if shopDocResult is error {
+            return <http:InternalServerError>{
+                body: { status: "error", message: "Error fetching shop data" }
+            };
+        }
+
+        if shopDocResult is () {
+            return <http:NotFound>{
+                body: { status: "error", message: "Shop not found: " + shopId }
+            };
+        }
+
+        LooseDoc shopDoc = <LooseDoc>shopDocResult;
+        json shopsJson = shopDoc["shops"];
+        if !(shopsJson is json[]) {
+            return <http:InternalServerError>{
+                body: { status: "error", message: "Invalid shop structure" }
+            };
+        }
+
+        json[] shops = <json[]>shopsJson;
+        json? shopJson = ();
+        foreach json s in shops {
+            if s is map<json> && s["id"] == shopId {
+                shopJson = s;
+                break;
+            }
+        }
+
+        if shopJson is () {
+            return <http:NotFound>{
+                body: { status: "error", message: "Shop not found: " + shopId }
+            };
+        }
+
+        map<json> shop = <map<json>>shopJson;
+        json productsJson = shop["products"];
+        json[] currentProducts = [];
+        if productsJson is json[] {
+            currentProducts = <json[]>productsJson;
+        } else if productsJson is map<json> {
+            currentProducts = [productsJson];
+        } else {
+            currentProducts = [];
+        }
+
+        // Find and remove the product
+        boolean productFound = false;
+        json[] updatedProducts = [];
+        foreach json prod in currentProducts {
+            if prod is map<json> {
+                map<json> product = <map<json>>prod;
+                if product["id"] == productId {
+                    productFound = true;
+                } else {
+                    updatedProducts.push(prod);
+                }
+            } else {
+                updatedProducts.push(prod);
+            }
+        }
+
+        if !productFound {
+            return <http:NotFound>{
+                body: { status: "error", message: "Product not found: " + productId }
+            };
+        }
+
+        // Update query: set the products array
+        mongodb:Update updateQuery = {
+            set: {
+                "shops.$.products": updatedProducts
+            }
+        };
+
+        map<json> filter = { "shops.id": shopId };
+
+        mongodb:UpdateResult result = check mallCollection->updateOne(filter, updateQuery);
+
+        if result.matchedCount == 0 {
+            return <http:InternalServerError>{
+                body: { status: "error", message: "Failed to delete product" }
+            };
+        }
+
+        return {
+            status: "success",
+            message: "Product deleted successfully",
+            productId: productId
+        };
+    }
+
     // Also add the admin endpoint for fetching products
     resource function get admin/[string shopId]/products() returns json|http:NotFound|http:InternalServerError|error {
         // Connect to database and collection
@@ -860,7 +962,6 @@ service / on new http:Listener(9090) {
             { "$match": { "shops.id": shopId } },
             {
                 "$project": {
-                "_id": 0,
                 "products": "$shops.products",
                 "shopId": "$shops.id",
                 "shopName": "$shops.name",
@@ -887,6 +988,87 @@ service / on new http:Listener(9090) {
 
         // Return products with just the products array for the admin endpoint
         return firstDoc["products"];
+    }
+
+    // ================= CUSTOMERS =================
+    resource function get admin/customers/[string shopId]()
+            returns json|http:InternalServerError|error {
+
+        // Connect to database
+        mongodb:Database database = check mongoClient->getDatabase(databaseName);
+        mongodb:Collection collection = check database->getCollection(collectionName_customers);
+
+        // Filter customers who have the shopId in their preferredStores
+        map<json> filter = { "preferredStores.shopId": shopId };
+        stream<record {| anydata...; |}, error?> customerStream = check collection->find(filter);
+        record {| anydata...; |}[] customers = check from var customer in customerStream select customer;
+
+        // Filter orders for each customer to only include orders from this shop
+        // Extract shop suffix (e.g., "S1" from "M1-S1")
+        string shopSuffix = "";
+        if string:includes(shopId, "-S") {
+            int? lastDashIndex = string:lastIndexOf(shopId, "-S");
+            if lastDashIndex is int {
+                shopSuffix = shopId.substring(lastDashIndex + 2);
+            }
+        }
+
+        // Filter orders for each customer
+        foreach var customer in customers {
+            anydata ordersData = customer["orders"];
+            if ordersData is json[] {
+                json[] ordersJson = ordersData;
+                json[] filteredOrders = [];
+                foreach json ord in ordersJson {
+                    if ord is map<json> {
+                        string? orderId = <string?>ord["orderId"];
+                        if orderId is string && string:startsWith(orderId, "S" + shopSuffix + "-O") {
+                            filteredOrders.push(ord);
+                        }
+                    }
+                }
+                customer["orders"] = filteredOrders;
+            }
+        }
+
+        // Convert each customer record to JSON
+        json[] customersJson = [];
+        foreach var customer in customers {
+            map<json> customerJson = {};
+            foreach var [key, value] in customer.entries() {
+                if value is anydata && value !is () {
+                    // Try to convert to JSON-compatible type
+                    if value is json {
+                        customerJson[key] = value;
+                    } else if value is string {
+                        customerJson[key] = value;
+                    } else if value is int {
+                        customerJson[key] = value;
+                    } else if value is float {
+                        customerJson[key] = value;
+                    } else if value is boolean {
+                        customerJson[key] = value;
+                    } else if value is anydata[] {
+                        // Handle arrays recursively
+                        json[] arrayJson = [];
+                        foreach var item in value {
+                            if item is json {
+                                arrayJson.push(item);
+                            } else {
+                                // Convert non-JSON items to string representation
+                                arrayJson.push(item.toString());
+                            }
+                        }
+                        customerJson[key] = arrayJson;
+                    } else {
+                        // Convert other types to string
+                        customerJson[key] = value.toString();
+                    }
+                }
+            }
+            customersJson.push(customerJson);
+        }
+        return {customers: customersJson};
     }
 }
 
