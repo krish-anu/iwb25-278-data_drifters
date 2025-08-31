@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { Eye, EyeOff, User, Mail, Lock, Sparkles, Shield } from "lucide-react";
 import { registerUser } from "../services/authServices";
+import { useNavigate } from "react-router-dom";
 
 export default function Signup() {
   const [name, setName] = useState("");
@@ -16,6 +17,7 @@ export default function Signup() {
     e.preventDefault();
     setIsLoading(true);
     setError("");
+    
 
     try {
       const res = await registerUser(Date.now().toString(),name, email, password, role); // pass role
@@ -23,6 +25,8 @@ export default function Signup() {
       if (res.status === "success") {
         localStorage.setItem("token", res.token);
         alert(`Welcome ${res.user.name} 🎉`);
+        window.location.href = "/"; // Redirect to login
+
       } else {
         setError(res.message || "Signup failed");
       }
