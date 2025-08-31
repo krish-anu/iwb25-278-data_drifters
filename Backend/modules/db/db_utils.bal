@@ -6,6 +6,7 @@ import ballerinax/mongodb;
 // Set explicit collection names in Config.toml
 configurable string collectionName_users = ?;
 configurable string collectionName_orders = ?;
+configurable string collectionName_shops = ?;
 
 // Small helper to fetch a collection by name (keeps code tidy)
 function getCollection(string collName) returns mongodb:Collection|error {
@@ -58,4 +59,20 @@ public function findOrderByOrderId(string orderId) returns models:Order|error {
         return error("Order not found");
     }
     return arr[0];
+}
+
+// ================= MALLS =================
+
+public function findMallByMallId(string mallId) returns models:MallDoc|error {
+    mongodb:Collection collection = check getCollection(collectionName_shops);
+
+    map<json> filter = {"mallId": mallId};
+    stream<models:MallDoc, error?> mallStream = check collection->find(filter, {}, (), models:MallDoc);
+    models:MallDoc[] malls = check from models:MallDoc mall in mallStream
+        select mall;
+
+    if malls.length() > 0 {
+        return malls[0];
+    }
+    return error("Mall not found");
 }
